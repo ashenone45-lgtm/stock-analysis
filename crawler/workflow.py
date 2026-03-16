@@ -29,6 +29,9 @@ def init_history() -> None:
     """历史初始化：构建股票池 → 并发拉取近3年日K。"""
     logger.info("=== 历史初始化工作流开始 ===")
     symbols = build_stock_pool()
+    if not symbols:
+        logger.error("Stock pool is empty — aborting init_history.")
+        return
     logger.info("股票池: %d 只", len(symbols))
     fetch_history_batch(symbols)
     logger.info("=== 历史初始化完成 ===")
@@ -38,6 +41,9 @@ def daily_update() -> None:
     """每日增量：拉取当日行情快照 + 公告。"""
     logger.info("=== 每日增量工作流开始 ===")
     symbols = build_stock_pool()
+    if not symbols:
+        logger.error("Stock pool is empty — aborting daily_update.")
+        return
     fetch_daily_spot(symbols)
     fetch_daily_news(symbols)
     logger.info("=== 每日增量完成 ===")
@@ -47,6 +53,9 @@ def quarterly_financial() -> None:
     """季度财务：并发拉取三张财务报表。"""
     logger.info("=== 季度财务工作流开始 ===")
     symbols = build_stock_pool()
+    if not symbols:
+        logger.error("Stock pool is empty — aborting quarterly_financial.")
+        return
     fetch_financial_batch(symbols)
     logger.info("=== 季度财务完成 ===")
 

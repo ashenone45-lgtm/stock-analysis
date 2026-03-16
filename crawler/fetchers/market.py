@@ -20,16 +20,20 @@ def fetch_history(symbol: str) -> None:
     end_date = date.today()
     start_date = end_date - timedelta(days=365 * HISTORY_YEARS)
 
-    df = retry_with_backoff(
-        lambda: ak.stock_zh_a_hist(
-            symbol=symbol,
-            period="daily",
-            start_date=start_date.strftime("%Y%m%d"),
-            end_date=end_date.strftime("%Y%m%d"),
-            adjust="qfq",
-        ),
-        stock_code=symbol,
-    )
+    try:
+        df = retry_with_backoff(
+            lambda: ak.stock_zh_a_hist(
+                symbol=symbol,
+                period="daily",
+                start_date=start_date.strftime("%Y%m%d"),
+                end_date=end_date.strftime("%Y%m%d"),
+                adjust="qfq",
+            ),
+            stock_code=symbol,
+        )
+    except Exception as e:
+        logger.error("[%s] History fetch failed: %s", symbol, e)
+        return
 
     if df is None or df.empty:
         logger.warning("[%s] No history data returned, skipping.", symbol)

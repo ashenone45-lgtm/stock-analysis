@@ -22,10 +22,13 @@ REPORT_PERIOD_COL = "报告期"
 def _add_exchange_prefix(symbol: str) -> str:
     """为6位股票代码添加交易所前缀，用于新浪接口。
     上交所：600xxx/601xxx/603xxx/605xxx → sh
+    北交所：8xxxxx → bj
     深交所：000xxx/001xxx/002xxx/003xxx/300xxx/301xxx → sz
     """
-    if symbol.startswith(("6",)):
+    if symbol.startswith("6"):
         return f"sh{symbol}"
+    if symbol.startswith("8"):
+        return f"bj{symbol}"
     return f"sz{symbol}"
 
 
