@@ -83,6 +83,7 @@ build_stock_pool
 
 [并发] fetch_history(每只股票)
   → akshare.stock_zh_a_hist(symbol, period="daily", start_date, end_date)
+  → start_date = 运行时动态计算：today - 3 years；end_date = today
   → 字段：日期、开、高、低、收、量、额、换手率
   → 写入 data/market/{code}.parquet
 ```
@@ -101,10 +102,13 @@ fetch_daily_news
 
 ### 5.3 财务数据工作流（每季度触发）
 
+触发时机：每个自然季度首次运行时，或手动执行。
+
 ```
 [并发] fetch_financial(每只股票)
   → akshare.stock_financial_report_sina()
   → 三张报表分别存 Parquet
+  → 去重键：报告期（如 "2024-09-30"），而非日历日期
 ```
 
 ---
@@ -113,7 +117,7 @@ fetch_daily_news
 
 `storage/parquet.py` 提供两个公共方法：
 
-- `write(df, path)` — 读取现有文件（若存在），与新数据合并，按日期去重后写回。幂等安全，重跑不产生脏数据。
+- `write(df, path, dedup_key="日期")` — 读取现有文件（若存在），与新数据合并，按 `dedup_key` 去重后写回。行情数据去重键为 `"日期"`，财务数据去重键为 `"报告期"`。幂等安全，重跑不产生脏数据。
 - `read(path, start=None, end=None)` — 加载文件，按日期范围过滤后返回 DataFrame。
 
 ---
@@ -122,7 +126,7 @@ fetch_daily_news
 
 | 场景 | 处理方式 |
 |------|---------|
-| 网络超时/请求失败 | 自动重试 3 次（指数退避 1s/2s/4s），失败记录到 `logs/errors.log` |
+| 网络超时/请求失败 | 自动重试 3 次（指数退避 1s/2s/4s），失败记录到 `logs/errors.log`，格式：`[timestamp] [stock_code] [error_message] [retry_count]` |
 | 返回数据为空 | 跳过写入，打印警告，不中断流程 |
 | 重复数据 | write() 内部去重，安全幂等 |
 | 单只股票失败 | 不影响并发中其他股票的处理 |
