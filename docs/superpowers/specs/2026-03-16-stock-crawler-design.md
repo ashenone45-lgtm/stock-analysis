@@ -1,7 +1,8 @@
 # Stock Crawler 设计文档
 
 **日期：** 2026-03-16
-**状态：** 已批准
+**更新：** 2026-03-17
+**状态：** 已实现
 **范围：** A 股高新行业股票数据爬虫（行情为主，财务/公告为辅）
 
 ---
@@ -36,15 +37,17 @@
 
 ## 3. 股票池
 
-通过 `akshare.stock_board_industry_cons_em()` 按行业板块拉取成分股，覆盖以下板块：
+通过 `akshare.sw_index_third_cons(symbol)` 按**申万三级行业代码**拉取成分股，覆盖以下行业：
 
-- IT 服务/软件
+- IT 服务、软件开发
 - 互联网
-- 半导体/芯片
-- 卫星/航天
-- 有色金属（铜、锂、稀土）
+- 半导体（6个子行业）
+- 卫星航天
+- 有色金属（5个子行业）
 
-板块名称映射表维护在 `crawler/config.py` 中，可随时增减。多板块股票合并去重后形成最终股票池。
+行业代码映射表维护在 `crawler/config.py` 的 `INDUSTRY_BOARDS` 中（格式如 `"850813.SI"`），可随时增减。多行业股票合并去重后形成最终股票池（约 523 只）。
+
+> **注：** 原设计使用 `stock_board_industry_cons_em`（东方财富CDN），因 push2.eastmoney.com 在部分网络环境下不可访问，已替换为申万行业接口。
 
 ---
 
@@ -59,15 +62,16 @@ stock-analysis/
 │   │   └── news.py         # 公告数据
 │   ├── storage/
 │   │   └── parquet.py      # 统一 Parquet 读写（幂等，按日期去重）
-│   ├── workflow.py         # ruflo workflow 编排入口
-│   └── config.py           # 行业板块映射、数据路径、参数配置
+│   ├── workflow.py         # 工作流编排入口（init/daily/financial）
+│   └── config.py           # 行业板块映射（申万代码）、数据路径、参数配置
 ├── data/
 │   ├── market/             # data/market/{stock_code}.parquet
 │   ├── financial/          # data/financial/{stock_code}_{report_type}.parquet
 │   └── news/               # data/news/{YYYY-MM-DD}.parquet
 ├── logs/
 │   └── errors.log          # 失败记录
-└── test.py                 # 手动验证脚本
+├── view_kline.py           # 日K线可视化（mplfinance，保存PNG）
+└── test.py                 # 手动验证脚本（6项端到端测试）
 ```
 
 ---
@@ -92,13 +96,15 @@ build_stock_pool
 
 ```
 fetch_daily_spot
-  → akshare.stock_zh_a_spot_em()
-  → 过滤股票池，追加当日行情到各股票 Parquet 文件
+  → 逐只调用 akshare.stock_zh_a_hist(start_date=today, end_date=today)
+  → 并发写入各股票 Parquet 文件（push2his.eastmoney.com，可直连）
 
 fetch_daily_news
   → akshare.stock_notice_report()
   → 过滤股票池，写入 data/news/{today}.parquet
 ```
+
+> **注：** 原设计使用 `stock_zh_a_spot_em()`（一次性拉取全市场快照），因依赖 push2.eastmoney.com CDN，已改为逐只调用历史K线接口并发拉取当日数据。
 
 ### 5.3 财务数据工作流（每季度触发）
 
@@ -146,8 +152,22 @@ fetch_daily_news
 
 ---
 
-## 9. 后续扩展（不在当前范围内）
+## 9. 数据可视化
+
+`view_kline.py` 提供日K线图查看工具（基于 mplfinance）：
+
+```bash
+python view_kline.py 600036            # 近90天
+python view_kline.py 600036 180        # 近N天
+python view_kline.py 600036 2024-01-01 2024-06-30  # 指定范围
+```
+
+图表内容：K线（红涨绿跌）+ MA5/MA20/MA60 均线 + 成交量柱图，结果保存为 PNG 并自动打开。
+
+---
+
+## 10. 后续扩展（不在当前范围内）
 
 - 接入 SQLite / PostgreSQL
 - 添加数据质量检查（缺口检测、异常值过滤）
-- 基于爬取数据的分析模块
+- 基于爬取数据的分析模块（选股、回测）
