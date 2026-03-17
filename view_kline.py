@@ -63,8 +63,11 @@ def plot(code: str, df: pd.DataFrame) -> None:
     mav = (5, 20, 60) if len(df) >= 60 else (5, 20) if len(df) >= 20 else (5,)
 
     out = Path(__file__).parent / f"kline_{code}.png"
+    # A股配色：红涨绿跌
+    mc = mpf.make_marketcolors(up="#e74c3c", down="#2ecc71", inherit=True)
     style = mpf.make_mpf_style(
         base_mpf_style="charles",
+        marketcolors=mc,
         rc={
             "font.sans-serif": ["Microsoft YaHei", "SimHei"],
             "font.family": "sans-serif",
