@@ -3,8 +3,15 @@
 运行方式：python test.py
 使用少量代表性股票验证各模块，不触发全量爬取。
 """
+import io
 import logging
 import os
+import sys
+
+# Fix Chinese garbled text on Windows GBK terminals
+if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
