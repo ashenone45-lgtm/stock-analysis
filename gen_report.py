@@ -281,12 +281,282 @@ def build_report(df: pd.DataFrame, target_date: str) -> str:
     return "\n".join(lines)
 
 
+# ── PDF 生成 ─────────────────────────────────────────────────
+
+def _register_cn_font():
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    font_candidates = [
+        (r"C:\Windows\Fonts\msyh.ttc", 0),   # Microsoft YaHei
+        (r"C:\Windows\Fonts\msyhbd.ttc", 0),
+        (r"C:\Windows\Fonts\simhei.ttf", None),
+    ]
+    for path, idx in font_candidates:
+        if Path(path).exists():
+            kwargs = {"subfontIndex": idx} if idx is not None else {}
+            pdfmetrics.registerFont(TTFont("CnFont", path, **kwargs))
+            return "CnFont"
+    raise RuntimeError("未找到可用的中文字体文件")
+
+
+def build_pdf(df: pd.DataFrame, target_date: str, out_path: Path) -> None:
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.platypus import (
+        HRFlowable, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table,
+        TableStyle,
+    )
+
+    font = _register_cn_font()
+    W, H = A4
+
+    # ── 样式 ──
+    def sty(name, **kw):
+        return ParagraphStyle(name, fontName=font, **kw)
+
+    S = {
+        "title":   sty("title",   fontSize=20, leading=28, spaceAfter=4, textColor=colors.HexColor("#1a1a2e")),
+        "meta":    sty("meta",    fontSize=9,  leading=14, textColor=colors.grey),
+        "h1":      sty("h1",      fontSize=13, leading=20, spaceBefore=14, spaceAfter=4,
+                        textColor=colors.HexColor("#2c3e50"), borderPadding=(0,0,2,0)),
+        "body":    sty("body",    fontSize=9,  leading=15, textColor=colors.HexColor("#333333")),
+        "caption": sty("caption", fontSize=8,  leading=12, textColor=colors.grey, spaceAfter=6),
+        "warn":    sty("warn",    fontSize=8,  leading=13, textColor=colors.HexColor("#c0392b"),
+                        borderColor=colors.HexColor("#e74c3c"), borderWidth=1,
+                        borderPadding=4, backColor=colors.HexColor("#fdf0ef")),
+        "tip":     sty("tip",     fontSize=8,  leading=13, textColor=colors.HexColor("#1a5276"),
+                        borderColor=colors.HexColor("#2980b9"), borderWidth=1,
+                        borderPadding=4, backColor=colors.HexColor("#eaf4fb")),
+    }
+
+    # ── 表格通用样式 ──
+    TBL_HDR = colors.HexColor("#2c3e50")
+    TBL_ALT = colors.HexColor("#f2f4f4")
+
+    def tbl_style(n_rows, highlight_col=None, up_col=None, down_col=None, col_data=None):
+        base = [
+            ("FONTNAME",    (0, 0), (-1, -1), font),
+            ("FONTSIZE",    (0, 0), (-1,  0), 8.5),
+            ("FONTSIZE",    (0, 1), (-1, -1), 8),
+            ("BACKGROUND",  (0, 0), (-1,  0), TBL_HDR),
+            ("TEXTCOLOR",   (0, 0), (-1,  0), colors.white),
+            ("ALIGN",       (0, 0), (-1, -1), "CENTER"),
+            ("VALIGN",      (0, 0), (-1, -1), "MIDDLE"),
+            ("ROWBACKGROUND", (0, 1), (-1, -1), [colors.white, TBL_ALT]),
+            ("GRID",        (0, 0), (-1, -1), 0.3, colors.HexColor("#cccccc")),
+            ("TOPPADDING",  (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING",(0,0), (-1, -1), 4),
+        ]
+        # 涨跌幅列染色
+        if up_col is not None and col_data is not None:
+            for i, val in enumerate(col_data, start=1):
+                try:
+                    v = float(str(val).replace("%", "").replace("+", ""))
+                    clr = colors.HexColor("#fdecea") if v > 0 else colors.HexColor("#eafaf1") if v < 0 else colors.white
+                    base.append(("BACKGROUND", (up_col, i), (up_col, i), clr))
+                except Exception:
+                    pass
+        return TableStyle(base)
+
+    def section(story, title):
+        story.append(Spacer(1, 6))
+        story.append(Paragraph(title, S["h1"]))
+        story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#2c3e50"), spaceAfter=4))
+
+    def kv_table(rows):
+        data = [[Paragraph(k, S["body"]), Paragraph(str(v), S["body"])] for k, v in rows]
+        t = Table(data, colWidths=[55*mm, W - 30*mm - 55*mm])
+        t.setStyle(tbl_style(len(data)))
+        return t
+
+    def stock_table(story, headers, rows, chg_col_idx=None):
+        hdr = [Paragraph(h, ParagraphStyle("th", fontName=font, fontSize=8.5,
+                          textColor=colors.white, alignment=1)) for h in headers]
+        body_rows = []
+        chg_vals = []
+        for r in rows:
+            body_rows.append([Paragraph(str(c), S["body"]) for c in r])
+            if chg_col_idx is not None:
+                chg_vals.append(r[chg_col_idx])
+        n_cols = len(headers)
+        col_w = (W - 30*mm) / n_cols
+        t = Table([hdr] + body_rows, colWidths=[col_w]*n_cols, repeatRows=1)
+        t.setStyle(tbl_style(len(body_rows), up_col=chg_col_idx, col_data=chg_vals if chg_vals else None))
+        story.append(t)
+        story.append(Spacer(1, 4))
+
+    # ── 数据准备 ──
+    total = len(df)
+    n_up = (df["涨跌幅"] > 0).sum()
+    n_down = (df["涨跌幅"] < 0).sum()
+    n_flat = total - n_up - n_down
+    n_limit_up = (df["涨跌幅"] >= 9.9).sum()
+    n_limit_down = (df["涨跌幅"] <= -9.9).sum()
+    avg_chg = df["涨跌幅"].mean()
+    med_chg = df["涨跌幅"].median()
+    total_vol = df["成交额亿"].sum()
+    strong = df[df["score"] >= 3]
+    weak = df[df["score"] <= -3]
+    rsi_avg = df["rsi"].dropna().mean()
+    n_oversold = (df["rsi"] < 30).sum()
+    n_overbought = (df["rsi"] > 70).sum()
+    top_gain = df.nlargest(10, "涨跌幅")
+    top_loss = df.nsmallest(10, "涨跌幅")
+    top_vol = df.nlargest(5, "成交额亿")
+    oversold_cands = df[(df["rsi"] < 30) & (df["涨跌幅"] < 0)].nsmallest(8, "rsi")
+    risk_stocks = df[df["涨跌幅"] <= -9.9].sort_values("涨跌幅")
+
+    if avg_chg >= 1.0:
+        sentiment, suggestion = "乐观偏多", "可适度跟进强势股，注意仓位控制"
+    elif avg_chg >= 0:
+        sentiment, suggestion = "温和偏多", "关注成交量放大的强势品种，轻仓试多"
+    elif avg_chg >= -1.5:
+        sentiment, suggestion = "谨慎偏空", "以观望为主，持仓控制在五成以下"
+    elif avg_chg >= -3.0:
+        sentiment, suggestion = "明显偏空", "观望为主，不追跌；关注超卖龙头企稳信号"
+    else:
+        sentiment, suggestion = "极度悲观", "空仓观望；超卖个股等放量止跌后再考虑布局"
+
+    # ── 构建文档 ──
+    doc = SimpleDocTemplate(
+        str(out_path), pagesize=A4,
+        leftMargin=15*mm, rightMargin=15*mm,
+        topMargin=15*mm, bottomMargin=15*mm,
+    )
+    story = []
+
+    # 封面
+    story.append(Spacer(1, 10*mm))
+    story.append(Paragraph(f"市场日报", S["title"]))
+    story.append(Paragraph(target_date, ParagraphStyle("date", fontName=font, fontSize=15,
+                            textColor=colors.HexColor("#e74c3c"), spaceAfter=2)))
+    story.append(Paragraph(
+        f"生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}　|　"
+        f"覆盖股票：{total} 只（IT / 半导体 / 互联网 / 卫星航天 / 有色金属）",
+        S["meta"]))
+    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#2c3e50"), spaceBefore=6, spaceAfter=10))
+
+    # 一、市场概况
+    section(story, "一、市场概况")
+    story.append(kv_table([
+        ("上涨 / 下跌 / 平盘", f"{n_up} / {n_down} / {n_flat}"),
+        ("涨停 / 跌停", f"{n_limit_up} / {n_limit_down}"),
+        ("平均涨跌幅", f"{avg_chg:+.2f}%"),
+        ("中位数涨跌幅", f"{med_chg:+.2f}%"),
+        ("板块总成交额", f"{total_vol:.1f} 亿元"),
+        ("市场情绪", sentiment),
+    ]))
+    story.append(Spacer(1, 4))
+    up_pct = n_up / total * 100
+    if up_pct < 20:
+        comment = f"上涨面仅 {up_pct:.0f}%，市场极度普跌，恐慌情绪蔓延。"
+    elif up_pct < 40:
+        comment = f"上涨面 {up_pct:.0f}%，多数个股走弱，做多意愿不足。"
+    elif up_pct < 60:
+        comment = f"上涨面 {up_pct:.0f}%，多空分歧明显，市场震荡分化。"
+    else:
+        comment = f"上涨面 {up_pct:.0f}%，普涨格局，市场情绪积极。"
+    story.append(Paragraph(f"{comment}平均跌幅与中位数接近（{avg_chg:+.2f}% vs {med_chg:+.2f}%），跌幅分布均匀。", S["body"]))
+
+    # 二、技术面信号
+    section(story, "二、技术面信号")
+    story.append(kv_table([
+        ("强势（均线多排 + MACD金叉）", f"{len(strong)} 只  ({len(strong)/total*100:.1f}%)"),
+        ("弱势（均线空排 + MACD死叉）", f"{len(weak)} 只  ({len(weak)/total*100:.1f}%)"),
+        ("RSI 均值", f"{rsi_avg:.1f}  ({'接近超卖' if rsi_avg < 40 else '中性' if rsi_avg < 60 else '偏高'})"),
+        ("RSI < 30（超卖）", f"{n_oversold} 只  ({n_oversold/total*100:.1f}%)"),
+        ("RSI > 70（超买）", f"{n_overbought} 只  ({n_overbought/total*100:.1f}%)"),
+    ]))
+    if n_oversold / total > 0.25:
+        story.append(Spacer(1, 4))
+        story.append(Paragraph("超卖个股占比超过 25%，市场存在超跌反弹动能，但需等待放量止跌信号确认。", S["warn"]))
+
+    # 三、涨幅榜
+    section(story, "三、涨幅榜 TOP10")
+    hdrs = ["代码", "名称", "涨跌幅", "收盘", "成交额", "RSI", "趋势"]
+    rows = []
+    for _, r in top_gain.iterrows():
+        sc = r["score"]
+        sig = "强势" if sc >= 3 else "偏多" if sc >= 1 else "震荡" if sc >= -1 else "偏空"
+        rows.append([r["代码"], r["名称"], f"{r['涨跌幅']:+.2f}%", f"{r['收盘']:.2f}",
+                     f"{r['成交额亿']:.1f}亿", f"{r['rsi']:.0f}", sig])
+    stock_table(story, hdrs, rows, chg_col_idx=2)
+
+    # 四、跌幅榜
+    section(story, "四、跌幅榜 TOP10")
+    rows = []
+    for _, r in top_loss.iterrows():
+        sc = r["score"]
+        sig = "偏多" if sc >= 1 else "震荡" if sc >= -1 else "偏空" if sc >= -3 else "弱势"
+        rows.append([r["代码"], r["名称"], f"{r['涨跌幅']:+.2f}%", f"{r['收盘']:.2f}",
+                     f"{r['成交额亿']:.1f}亿", f"{r['rsi']:.0f}", sig])
+    stock_table(story, hdrs, rows, chg_col_idx=2)
+
+    # 五、强势股
+    if not strong.empty:
+        section(story, "五、强势股（均线多排 + MACD金叉）")
+        hdrs5 = ["代码", "名称", "涨跌幅", "收盘", "强于MA60", "RSI"]
+        rows5 = []
+        for _, r in strong.nlargest(10, "涨跌幅").iterrows():
+            bias = f"+{r['ma60_bias']:.1f}%" if r["ma60_bias"] > 0 else f"{r['ma60_bias']:.1f}%"
+            rows5.append([r["代码"], r["名称"], f"{r['涨跌幅']:+.2f}%",
+                          f"{r['收盘']:.2f}", bias, f"{r['rsi']:.0f}"])
+        stock_table(story, hdrs5, rows5, chg_col_idx=2)
+
+    # 六、资金活跃度
+    section(story, "六、资金活跃度（成交额 TOP5）")
+    hdrs6 = ["代码", "名称", "涨跌幅", "成交额", "换手率"]
+    rows6 = [[r["代码"], r["名称"], f"{r['涨跌幅']:+.2f}%",
+              f"{r['成交额亿']:.1f}亿", f"{r['换手率']:.2f}%"] for _, r in top_vol.iterrows()]
+    stock_table(story, hdrs6, rows6, chg_col_idx=2)
+
+    # 七、超卖反弹候选
+    if not oversold_cands.empty:
+        section(story, "七、超卖反弹候选（RSI < 30）")
+        hdrs7 = ["代码", "名称", "今日涨跌", "RSI", "偏离MA60", "风险提示"]
+        rows7 = []
+        for _, r in oversold_cands.iterrows():
+            risk = "趋势仍空" if r["score"] < 0 else "可关注"
+            rows7.append([r["代码"], r["名称"], f"{r['涨跌幅']:+.2f}%",
+                          f"{r['rsi']:.0f}", f"{r['ma60_bias']:+.1f}%", risk])
+        stock_table(story, hdrs7, rows7, chg_col_idx=2)
+        story.append(Paragraph("超卖 ≠ 立即反弹。建议等待放量止跌 + 次日高开信号后再考虑介入。", S["tip"]))
+
+    # 八、风险事件
+    if not risk_stocks.empty:
+        section(story, "八、风险事件（跌停）")
+        hdrs8 = ["代码", "名称", "涨跌幅", "成交额", "说明"]
+        rows8 = [[r["代码"], r["名称"], f"{r['涨跌幅']:+.2f}%",
+                  f"{r['成交额亿']:.1f}亿", "跌停，需关注公告"] for _, r in risk_stocks.iterrows()]
+        stock_table(story, hdrs8, rows8, chg_col_idx=2)
+
+    # 九、综合结论
+    section(story, "九、综合结论")
+    strong_weak = "空头占优" if len(weak) > len(strong) else "多头占优" if len(strong) > len(weak) else "多空均衡"
+    vol_comment = "未大幅缩量" if total_vol > 2000 else "成交明显萎缩"
+    story.append(kv_table([
+        ("短期情绪", sentiment),
+        ("技术结构", f"弱势 {len(weak)} 只 vs 强势 {len(strong)} 只，{strong_weak}"),
+        ("超卖程度", f"RSI均值 {rsi_avg:.1f}，{n_oversold} 只进入超卖（{n_oversold/total*100:.0f}%）"),
+        ("资金面", f"龙头 {top_vol.iloc[0]['名称']} 成交 {top_vol.iloc[0]['成交额亿']:.0f}亿，{vol_comment}"),
+        ("操作建议", suggestion),
+    ]))
+    story.append(Spacer(1, 10))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey, spaceAfter=4))
+    story.append(Paragraph("本报告由量化脚本自动生成，仅供参考，不构成投资建议。", S["caption"]))
+
+    doc.build(story)
+
+
 # ── 主入口 ──────────────────────────────────────────────────
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--date", type=str, default=None)
     parser.add_argument("--out", type=str, default=None)
+    parser.add_argument("--no-pdf", action="store_true", help="只生成 Markdown，跳过 PDF")
     args = parser.parse_args()
 
     # 自动取最新交易日
@@ -308,12 +578,16 @@ if __name__ == "__main__":
         print(f"没有 {target_date} 的数据，请先运行 daily 工作流。")
         sys.exit(1)
 
-    print("生成报告...", flush=True)
+    print("生成 Markdown 报告...", flush=True)
     report = build_report(df, target_date)
+    md_file = out_dir / f"daily_{target_date}.md"
+    md_file.write_text(report, encoding="utf-8")
+    print(f"已保存: {md_file}")
 
-    out_file = out_dir / f"daily_{target_date}.md"
-    out_file.write_text(report, encoding="utf-8")
-    print(f"已保存: {out_file}")
-
-    # 同时打印到终端
-    print("\n" + report)
+    if not args.no_pdf:
+        print("生成 PDF 报告...", flush=True)
+        pdf_file = out_dir / f"daily_{target_date}.pdf"
+        build_pdf(df, target_date, pdf_file)
+        print(f"已保存: {pdf_file}")
+        import subprocess
+        subprocess.Popen(["start", "", str(pdf_file)], shell=True)
