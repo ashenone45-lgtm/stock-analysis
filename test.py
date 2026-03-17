@@ -19,7 +19,7 @@ def test_stock_pool():
     assert len(pool) > 0, "股票池为空！"
     for code in pool[:5]:
         assert len(code) == 6 and code.isdigit(), f"代码格式错误: {code}"
-    print(f"✓ 股票池: {len(pool)} 只 | 前5: {pool[:5]}")
+    print(f"[OK] 股票池: {len(pool)} 只 | 前5: {pool[:5]}")
     return pool
 
 
@@ -32,7 +32,7 @@ def test_market_history():
         df = read(f"data/market/{symbol}.parquet")
         assert len(df) > 100, f"[{symbol}] 数据行数不足: {len(df)}"
         size_kb = os.path.getsize(f"data/market/{symbol}.parquet") / 1024
-        print(f"  ✓ {symbol}: {len(df)} 行 | {df['日期'].min()} ~ {df['日期'].max()} | {size_kb:.1f} KB")
+        print(f"  [OK] {symbol}: {len(df)} 行 | {df['日期'].min()} ~ {df['日期'].max()} | {size_kb:.1f} KB")
 
 
 def test_daily_spot():
@@ -45,7 +45,7 @@ def test_daily_spot():
     for symbol in SAMPLE_SYMBOLS[:2]:
         df = read(f"data/market/{symbol}.parquet")
         today_rows = df[df["日期"].astype(str).str.startswith(today)]
-        flag = "✓" if len(today_rows) > 0 else "⚠"
+        flag = "[OK]" if len(today_rows) > 0 else "[WARN]"
         print(f"  {flag} {symbol}: 今日数据 {len(today_rows)} 行（非交易日可为0）")
 
 
@@ -59,9 +59,9 @@ def test_news():
     if os.path.exists(path):
         from crawler.storage.parquet import read
         df = read(path)
-        print(f"  ✓ 今日公告: {len(df)} 条 -> {path}")
+        print(f"  [OK] 今日公告: {len(df)} 条 -> {path}")
     else:
-        print(f"  ⚠ 今日无公告（非交易日或暂无公告）")
+        print(f"  [WARN] 今日无公告（非交易日或暂无公告）")
 
 
 def test_financial():
@@ -71,7 +71,7 @@ def test_financial():
     fetch_financial(symbol)
     files = [f for f in os.listdir("data/financial") if f.startswith(symbol)]
     assert len(files) >= 1, f"[{symbol}] 未生成财务文件"
-    print(f"  ✓ {symbol} 财务文件: {files}")
+    print(f"  [OK] {symbol} 财务文件: {files}")
 
 
 def test_idempotency():
@@ -84,7 +84,7 @@ def test_idempotency():
     fetch_history(symbol)  # 重跑，不应产生重复行
     df2 = read(f"data/market/{symbol}.parquet")
     assert len(df1) == len(df2), f"重跑后行数变化: {len(df1)} → {len(df2)}"
-    print(f"  ✓ 幂等OK: 两次运行行数一致 ({len(df2)} 行)")
+    print(f"  [OK] 幂等OK: 两次运行行数一致 ({len(df2)} 行)")
 
 
 if __name__ == "__main__":
@@ -100,5 +100,5 @@ if __name__ == "__main__":
     test_idempotency()
 
     print("\n" + "=" * 55)
-    print("✓ 所有验证通过")
+    print("[OK] 所有验证通过")
     print("=" * 55)

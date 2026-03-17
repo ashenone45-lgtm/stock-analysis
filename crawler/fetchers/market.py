@@ -56,32 +56,37 @@ def fetch_history_batch(symbols: list[str]) -> None:
 
 
 def fetch_daily_spot(symbols: list[str]) -> None:
-    """拉取全市场当日行情快照，过滤股票池，追加到各股票 Parquet。"""
-    df_all = retry_with_backoff(
-        lambda: ak.stock_zh_a_spot_em(),
-        stock_code="daily_spot",
-    )
+    """拉取当日行情，追加到各股票 Parquet。
 
-    if df_all is None or df_all.empty:
-        logger.warning("Daily spot returned empty, skipping.")
-        return
+    使用 stock_zh_a_hist（push2his 服务器）逐只并发获取，
+    避免依赖 push2.eastmoney.com 的实时快照接口。
+    """
+    today = date.today().strftime("%Y%m%d")
 
-    # 东方财富实时行情：代码列名为 "代码"
-    code_col = next((c for c in df_all.columns if c == "代码"), None)
-    if code_col is None:
-        logger.error("Daily spot: cannot find '代码' column. Columns: %s", df_all.columns.tolist())
-        return
+    def _fetch_one(symbol: str) -> None:
+        try:
+            df = retry_with_backoff(
+                lambda s=symbol: ak.stock_zh_a_hist(
+                    symbol=s, period="daily",
+                    start_date=today, end_date=today, adjust="qfq",
+                ),
+                stock_code=symbol,
+            )
+        except Exception as e:
+            logger.error("[%s] Daily spot failed: %s", symbol, e)
+            return
+        if df is None or df.empty:
+            return
+        write(df, MARKET_DIR / f"{symbol}.parquet", dedup_key="日期")
 
-    df_pool = df_all[df_all[code_col].isin(symbols)].copy()
-    df_pool = df_pool.rename(columns={code_col: "symbol"})
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = {executor.submit(_fetch_one, s): s for s in symbols}
+        done = 0
+        for future in as_completed(futures):
+            try:
+                future.result()
+                done += 1
+            except Exception as e:
+                logger.error("[%s] Unexpected error: %s", futures[future], e)
 
-    today_str = str(date.today())
-    df_pool["日期"] = today_str
-
-    updated = 0
-    for symbol, group in df_pool.groupby("symbol"):
-        row = group.drop(columns=["symbol"])
-        write(row, MARKET_DIR / f"{symbol}.parquet", dedup_key="日期")
-        updated += 1
-
-    logger.info("Daily spot: updated %d stocks.", updated)
+    logger.info("Daily spot: updated %d / %d stocks.", done, len(symbols))
