@@ -559,13 +559,23 @@ if __name__ == "__main__":
     parser.add_argument("--no-pdf", action="store_true", help="只生成 Markdown，跳过 PDF")
     args = parser.parse_args()
 
-    # 自动取最新交易日
+    # 自动取最新交易日（多取几个文件防止单文件数据缺失）
     if args.date:
         target_date = args.date
     else:
-        sample = pd.read_parquet(next(DATA_DIR.glob("*.parquet")))
-        sample["日期"] = pd.to_datetime(sample["日期"]).dt.strftime("%Y-%m-%d")
-        target_date = sample["日期"].max()
+        files = list(DATA_DIR.glob("*.parquet"))
+        dates = []
+        for f in files[:20]:
+            try:
+                tmp = pd.read_parquet(f, columns=["日期"])
+                tmp["日期"] = pd.to_datetime(tmp["日期"]).dt.strftime("%Y-%m-%d")
+                dates.append(tmp["日期"].max())
+            except Exception:
+                pass
+        target_date = max(dates) if dates else None
+        if not target_date:
+            print("无法读取行情数据，请先运行 daily 工作流。")
+            sys.exit(1)
 
     out_dir = Path(args.out) if args.out else REPORTS_DIR
     out_dir.mkdir(parents=True, exist_ok=True)

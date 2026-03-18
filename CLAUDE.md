@@ -22,7 +22,7 @@ python view_kline.py 600036 2024-01-01 2024-06-30  # 指定范围
 ## Data Source
 
 - 股票池：akshare `sw_index_third_cons`（申万三级行业，不走东方财富CDN）
-- 历史K线：akshare `stock_zh_a_hist`（push2his.eastmoney.com，可直连）
+- 历史K线/每日行情：akshare `stock_zh_a_daily`（新浪财经，需 sh/sz 前缀）
 - 财务报表：akshare `stock_financial_report_sina`（新浪财务）
 - 公告：akshare `stock_notice_report`
 
@@ -42,6 +42,32 @@ python view_kline.py 600036 2024-01-01 2024-06-30  # 指定范围
 ## Windows Encoding
 
 Python stdout/stderr 默认 GBK，所有脚本开头已加 UTF-8 强制转换，无需额外配置。
+
+## 报告推送（飞书/钉钉）
+
+```bash
+# 推送最新交易日报告
+python push_report.py
+
+# 预览消息内容（不实际发送）
+python push_report.py --dry-run
+
+# 推送指定日期
+python push_report.py --date 2026-03-14
+
+# 全流程自动化（爬取 → 生成报告 → 推送）
+run_daily.bat
+```
+
+**配置步骤：**
+1. 复制 `.env.example` 为 `.env`
+2. 填入飞书或钉钉机器人的 Webhook URL
+3. 运行 `python push_report.py --dry-run` 验证消息格式
+
+**Windows 任务计划（每工作日 16:30 自动运行）：**
+```bat
+schtasks /create /tn "StockDaily" /tr "D:\project\claudeCode\.worktrees\stock-analysis\run_daily.bat" /sc weekly /d MON,TUE,WED,THU,FRI /st 16:30 /f
+```
 
 ## Proxy Helper
 
