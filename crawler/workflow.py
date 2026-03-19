@@ -16,6 +16,7 @@ import sys
 from crawler.fetchers.financial import fetch_financial_batch
 from crawler.fetchers.market import fetch_daily_spot, fetch_history_batch
 from crawler.fetchers.news import fetch_daily_news
+from crawler.health_check import run_health_check
 from crawler.stock_pool import build_stock_pool
 
 logging.basicConfig(
@@ -42,10 +43,10 @@ def daily_update() -> None:
     logger.info("=== 每日增量工作流开始 ===")
     symbols = build_stock_pool()
     if not symbols:
-        logger.error("Stock pool is empty — aborting daily_update.")
-        return
+        raise RuntimeError("Stock pool is empty — aborting daily_update.")
     fetch_daily_spot(symbols)
     fetch_daily_news(symbols)
+    run_health_check()
     logger.info("=== 每日增量完成 ===")
 
 
@@ -71,4 +72,8 @@ if __name__ == "__main__":
     if cmd not in _COMMANDS:
         print(f"Usage: python -m crawler.workflow [{'|'.join(_COMMANDS)}]")
         sys.exit(1)
-    _COMMANDS[cmd]()
+    try:
+        _COMMANDS[cmd]()
+    except RuntimeError as e:
+        logger.error("%s", e)
+        sys.exit(1)

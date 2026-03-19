@@ -25,6 +25,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from crawler.report_utils import sector_table as _sector_table
 from gen_report import load_market, load_names
 
 DATA_DIR = Path(__file__).parent / "data" / "market"
@@ -72,6 +73,13 @@ def _make_upload_opener() -> urllib.request.OpenerDirector:
     )
     ctx = ssl.create_default_context()
     if os.environ.get("SKIP_SSL_VERIFY") == "1":
+        import warnings
+        warnings.warn(
+            "SKIP_SSL_VERIFY=1: SSL certificate verification is DISABLED. "
+            "This exposes uploads to man-in-the-middle attacks. "
+            "Use only on trusted networks. Prefer fixing proxy CA config instead.",
+            stacklevel=2,
+        )
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
     handlers: list = [urllib.request.HTTPSHandler(context=ctx)]
@@ -141,9 +149,9 @@ def _try_litterbox(path: Path, data: bytes, opener: urllib.request.OpenerDirecto
     return result
 
 
-def upload_pdf(pdf_path: str) -> str | None:
-    """上传 PDF，依次尝试 0x0.st → transfer.sh（走本地代理），返回公网链接；失败返回 None"""
-    path = Path(pdf_path)
+def upload_html(html_path: str) -> str | None:
+    """上传 HTML，依次尝试 litterbox → transfer.sh（走本地代理），返回公网链接；失败返回 None"""
+    path = Path(html_path)
     if not path.exists():
         return None
     with open(path, "rb") as f:
@@ -153,11 +161,11 @@ def upload_pdf(pdf_path: str) -> str | None:
         try:
             url = fn(path, data, opener)
             if url and url.startswith("http"):
-                print(f"PDF 已上传至 {name}: {url}", flush=True)
+                print(f"HTML 已上传至 {name}: {url}", flush=True)
                 return url
         except Exception as e:
             print(f"{name} 上传失败，尝试下一个: {e}", file=sys.stderr)
-    print("PDF 所有上传渠道均失败，跳过链接。", file=sys.stderr)
+    print("HTML 所有上传渠道均失败，跳过链接。", file=sys.stderr)
     return None
 
 
@@ -185,6 +193,7 @@ def build_report_data(df: pd.DataFrame, target_date: str) -> dict:
     strong_stocks = strong.nlargest(10, "涨跌幅")
     oversold_cands = df[(df["rsi"] < 30) & (df["涨跌幅"] < 0)].nsmallest(8, "rsi")
     risk_stocks = df[df["涨跌幅"] <= -9.9].sort_values("涨跌幅")
+    sector_summary = _sector_table(df)
 
     if avg_chg >= 1.0:
         sentiment, suggestion = "乐观偏多", "可适度跟进强势股，注意仓位控制"
@@ -220,6 +229,7 @@ def build_report_data(df: pd.DataFrame, target_date: str) -> dict:
             for i in range(len(sub_df))
         ]
 
+    html_path = REPORTS_DIR / f"daily_{target_date}.html"
     return {
         "date": target_date,
         "total": total,
@@ -246,9 +256,10 @@ def build_report_data(df: pd.DataFrame, target_date: str) -> dict:
         "oversold_cands": oversold_cands,
         "risk_stocks": risk_stocks,
         "score_label": score_label,
-        "pdf_path": str(REPORTS_DIR / f"daily_{target_date}.pdf"),
-        "pdf_exists": (REPORTS_DIR / f"daily_{target_date}.pdf").exists(),
-        "pdf_url": None,  # 由主入口上传后填入
+        "sector_summary": sector_summary,
+        "html_path": str(html_path),
+        "html_exists": html_path.exists(),
+        "html_url": None,  # 由主入口上传后填入
     }
 
 
@@ -260,6 +271,15 @@ def _txt(text: str) -> dict:
 
 def _row(*parts: str) -> list:
     return [_txt(p) for p in parts]
+
+
+def _sector_line(sector_summary) -> str:
+    """生成板块摘要文字，如：领涨：半导体 +2.1%，拖累：有色 -0.8%"""
+    if sector_summary is None or sector_summary.empty:
+        return ""
+    top = sector_summary.iloc[0]
+    bot = sector_summary.iloc[-1]
+    return f"板块领涨：{top['行业']} {top['平均涨跌']:+.2f}%，拖累：{bot['行业']} {bot['平均涨跌']:+.2f}%"
 
 
 def build_feishu_payload(d: dict) -> dict:
@@ -275,7 +295,14 @@ def build_feishu_payload(d: dict) -> dict:
     oversold_codes = list(d["oversold_cands"]["代码"].values[:5])
     oversold_text = "、".join(oversold_codes) if oversold_codes else "无"
 
-    content = [
+    content = []
+    # 告警行
+    if d["n_limit_up"] >= 5:
+        content.append([_txt(f"⚠️ 今日涨停 {d['n_limit_up']} 只")])
+    if d["n_limit_down"] >= 3:
+        content.append([_txt(f"⚠️ 今日跌停 {d['n_limit_down']} 只")])
+
+    content += [
         [_txt(f"市场概况: {d['total']}只  |  上涨 {d['n_up']}  |  下跌 {d['n_down']}  |  均涨 {avg_sign}{d['avg_chg']:.2f}%  |  情绪: {d['sentiment']}")],
         [_txt(" ")],
         [_txt("🔴 涨幅榜 Top5")],
@@ -289,10 +316,14 @@ def build_feishu_payload(d: dict) -> dict:
         [_txt(" ")],
     ]
 
-    if d.get("pdf_url"):
-        content.append([_txt("📄 完整报告: "), {"tag": "a", "text": "点击下载PDF", "href": d["pdf_url"]}])
-    else:
-        content.append([_txt(f"📄 完整报告: {d['pdf_path']}")])
+    sec_line = _sector_line(d.get("sector_summary"))
+    if sec_line:
+        content.append([_txt(f"🏭 {sec_line}")])
+
+    if d.get("html_url"):
+        content.append([_txt("📊 完整报告: "), {"tag": "a", "text": "点击查看HTML报告", "href": d["html_url"]}])
+    elif d.get("html_exists"):
+        content.append([_txt(f"📊 完整报告: {d['html_path']}")])
 
     return {
         "msg_type": "post",
@@ -325,14 +356,26 @@ def build_dingtalk_payload(d: dict) -> dict:
     oversold_codes = list(d["oversold_cands"]["代码"].values[:5])
     oversold_text = "、".join(oversold_codes) if oversold_codes else "无"
 
-    pdf_line = (
-        f"📄 [完整PDF报告]({d['pdf_url']})"
-        if d.get("pdf_url")
-        else f"📄 完整报告: {d['pdf_path']}"
-    )
+    if d.get("html_url"):
+        html_line = f"📊 [点击查看完整报告]({d['html_url']})"
+    elif d.get("html_exists"):
+        html_line = f"📊 完整报告: {d['html_path']}"
+    else:
+        html_line = ""
+
+    # 告警行
+    alert_lines = ""
+    if d["n_limit_up"] >= 5:
+        alert_lines += f"\n> **⚠️ 今日涨停 {d['n_limit_up']} 只**\n"
+    if d["n_limit_down"] >= 3:
+        alert_lines += f"\n> **⚠️ 今日跌停 {d['n_limit_down']} 只**\n"
+
+    # 板块摘要
+    sec_line = _sector_line(d.get("sector_summary"))
+    sec_md = f"\n🏭 **{sec_line}**\n" if sec_line else ""
 
     text = f"""## 📊 A股日报 {d["date"]}
-
+{alert_lines}
 **市场概况:** {d["total"]}只 | 上涨 {d["n_up"]} | 下跌 {d["n_down"]} | 均涨 {avg_sign}{d["avg_chg"]:.2f}% | 情绪: **{d["sentiment"]}**
 
 #### 🔴 涨幅榜 Top5
@@ -344,8 +387,8 @@ def build_dingtalk_payload(d: dict) -> dict:
 ⚡ **强势信号(≥3分):** {strong_text}
 
 📉 **超卖候选(RSI<30):** {oversold_text}
-
-{pdf_line}
+{sec_md}
+{html_line}
 """
 
     return {
@@ -431,9 +474,9 @@ if __name__ == "__main__":
 
     data = build_report_data(df, target_date)
 
-    if data["pdf_exists"] and not args.dry_run:
-        print("上传 PDF...", flush=True)
-        data["pdf_url"] = upload_pdf(data["pdf_path"])
+    if data["html_exists"] and not args.dry_run:
+        print("上传 HTML...", flush=True)
+        data["html_url"] = upload_html(data["html_path"])
 
     env = load_env()
     feishu_url = env.get("FEISHU_WEBHOOK", "")

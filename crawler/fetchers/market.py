@@ -4,6 +4,7 @@ from datetime import date, timedelta
 
 import akshare as ak
 import pandas as pd
+from tqdm import tqdm
 
 from crawler.config import HISTORY_YEARS, MARKET_DIR, MAX_WORKERS
 from crawler.storage.parquet import write
@@ -71,22 +72,30 @@ def fetch_history_batch(symbols: list[str]) -> None:
     """并发拉取股票池所有股票的历史 K 线。"""
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = {executor.submit(fetch_history, s): s for s in symbols}
-        for future in as_completed(futures):
-            symbol = futures[future]
-            try:
-                future.result()
-            except Exception as e:
-                logger.error("[%s] History fetch ultimately failed: %s", symbol, e)
+        with tqdm(total=len(symbols), desc="拉取历史K线", unit="只") as pbar:
+            for future in as_completed(futures):
+                symbol = futures[future]
+                try:
+                    future.result()
+                except Exception as e:
+                    logger.error("[%s] History fetch ultimately failed: %s", symbol, e)
+                pbar.update(1)
 
 
 def fetch_daily_spot(symbols: list[str]) -> None:
-    """拉取当日行情，追加到各股票 Parquet。使用新浪财经接口。"""
+    """拉取最近行情，追加到各股票 Parquet。使用新浪财经接口。
+
+    写入最近 5 日内的所有可用 K 线（dedup_key 防重），不强制要求"必须是今天"。
+    新浪接口在收盘后有延迟，严格过滤今天会导致什么都写不进去。
+    """
     today = date.today()
-    # 多取一天以便 diff() 计算涨跌幅
-    start = (today - timedelta(days=5)).strftime("%Y%m%d")
+    # 多取几天保证 diff() 有参照，也兼容收盘延迟
+    start = (today - timedelta(days=7)).strftime("%Y%m%d")
     end = today.strftime("%Y%m%d")
 
-    def _fetch_one(symbol: str) -> None:
+    updated = 0
+
+    def _fetch_one(symbol: str) -> bool:
         try:
             df = retry_with_backoff(
                 lambda s=symbol: ak.stock_zh_a_daily(
@@ -97,24 +106,44 @@ def fetch_daily_spot(symbols: list[str]) -> None:
             )
         except Exception as e:
             logger.error("[%s] Daily spot failed: %s", symbol, e)
-            return
+            return False
         if df is None or df.empty:
-            return
+            return False
         df = _normalize(df)
-        today_str = today.strftime("%Y-%m-%d")
-        df = df[df["日期"] == today_str]
         if df.empty:
-            return
+            return False
+        # 写入所有拿到的行；dedup_key="日期" 自动去重，旧数据不会重复
         write(df, MARKET_DIR / f"{symbol}.parquet", dedup_key="日期")
+        return True
 
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = {executor.submit(_fetch_one, s): s for s in symbols}
-        done = 0
-        for future in as_completed(futures):
-            try:
-                future.result()
-                done += 1
-            except Exception as e:
-                logger.error("[%s] Unexpected error: %s", futures[future], e)
+        with tqdm(total=len(symbols), desc="拉取每日行情", unit="只") as pbar:
+            for future in as_completed(futures):
+                try:
+                    if future.result():
+                        updated += 1
+                except Exception as e:
+                    logger.error("[%s] Unexpected error: %s", futures[future], e)
+                pbar.update(1)
 
-    logger.info("Daily spot: updated %d / %d stocks.", done, len(symbols))
+    today_str = today.strftime("%Y-%m-%d")
+    # 抽查几个文件，确认最新日期
+    sample = list(MARKET_DIR.glob("*.parquet"))[:10]  # 抽查前10只，快速验证日期
+    latest_dates = set()
+    for f in sample:
+        try:
+            tmp = pd.read_parquet(f, columns=["日期"])
+            latest_dates.add(tmp["日期"].max())
+        except Exception:
+            pass
+    latest = max(latest_dates) if latest_dates else "unknown"
+    if latest < today_str:
+        logger.warning(
+            "Daily spot: updated %d / %d stocks. Latest date in files: %s "
+            "(today=%s — market may not have closed yet or data is delayed).",
+            updated, len(symbols), latest, today_str,
+        )
+    else:
+        logger.info("Daily spot: updated %d / %d stocks. Latest date: %s.",
+                    updated, len(symbols), latest)
