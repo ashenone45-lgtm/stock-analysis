@@ -431,66 +431,39 @@ def build_report(df: pd.DataFrame, target_date: str) -> str:
     return "\n".join(lines)
 
 
-# ── 主入口 ──────────────────────────────────────────────────
+# ── 工具函数 ─────────────────────────────────────────────────
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--date", type=str, default=None)
-    parser.add_argument("--out", type=str, default=None)
-    parser.add_argument("--no-html", action="store_true", help="只生成 Markdown，跳过 HTML")
-    parser.add_argument("--require-today", action="store_true",
-                        help="若数据日期不是今天则报错退出（用于定时任务校验）")
-    args = parser.parse_args()
+def _available_dates() -> list[str]:
+    """扫描 parquet 文件，返回所有有数据的交易日列表（升序）。"""
+    seen: set[str] = set()
+    for f in DATA_DIR.glob("*.parquet"):
+        try:
+            tmp = pd.read_parquet(f, columns=["日期"])
+            tmp["日期"] = pd.to_datetime(tmp["日期"]).dt.strftime("%Y-%m-%d")
+            seen.update(tmp["日期"].tolist())
+        except Exception:
+            pass
+    return sorted(seen)
 
-    # 自动取最新交易日（多取几个文件防止单文件数据缺失）
-    if args.date:
-        target_date = args.date
-    else:
-        files = list(DATA_DIR.glob("*.parquet"))
-        dates = []
-        for f in files[:20]:
-            try:
-                tmp = pd.read_parquet(f, columns=["日期"])
-                tmp["日期"] = pd.to_datetime(tmp["日期"]).dt.strftime("%Y-%m-%d")
-                dates.append(tmp["日期"].max())
-            except Exception:
-                pass
-        target_date = max(dates) if dates else None
-        if not target_date:
-            print("无法读取行情数据，请先运行 daily 工作流。")
-            sys.exit(1)
 
-    # ── 日期检查：打印实际报告日期，明确提示是否有今天的数据 ──
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    if target_date == today_str:
-        print(f"[✓] 数据日期：{target_date}（今天）", flush=True)
-    else:
-        print(f"[!] 注意：没有今天（{today_str}）的数据，将使用最近可用日期 {target_date}。", flush=True)
-        print(f"    可能原因：今日为非交易日、行情尚未收盘、或数据源延迟。", flush=True)
-    if args.require_today and target_date != today_str:
-        sys.exit(1)
-
-    out_dir = Path(args.out) if args.out else REPORTS_DIR
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    print(f"加载 {target_date} 数据...", flush=True)
+def _generate_one(target_date: str, out_dir: Path, no_html: bool, open_after: bool) -> bool:
+    """生成单日报告。返回 True 表示成功。"""
+    print(f"\n{'='*50}", flush=True)
+    print(f"生成 {target_date} 报告...", flush=True)
     names = load_names()
     df = load_market(target_date, names)
-
     if df.empty:
-        print(f"没有 {target_date} 的数据，请先运行 daily 工作流。")
-        sys.exit(1)
+        print(f"[!] 没有 {target_date} 的数据，跳过。")
+        return False
 
-    print("生成 Markdown 报告...", flush=True)
     report = build_report(df, target_date)
     md_file = out_dir / f"daily_{target_date}.md"
     md_file.write_text(report, encoding="utf-8")
     print(f"已保存: {md_file}")
 
-    if not args.no_html:
+    if not no_html:
         from report_html import build_html
         from gen_index import update_manifest_and_index, get_prev_date
-        print("生成 HTML 报告...", flush=True)
         manifest_path = out_dir / "manifest.json"
         prev_date = get_prev_date(manifest_path, before_date=target_date)
         html_file = out_dir / f"daily_{target_date}.html"
@@ -503,6 +476,79 @@ if __name__ == "__main__":
             reports_dir=out_dir,
             index_path=Path(__file__).parent / "index.html",
         )
-        if sys.stdout.isatty():
+        if open_after:
             import os
             os.startfile(str(html_file))
+    return True
+
+
+# ── 主入口 ──────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="生成 A股日报（Markdown + HTML）")
+    parser.add_argument("--date", type=str, default=None,
+                        help="指定单个日期，如 2026-03-24")
+    parser.add_argument("--dates", type=str, nargs="+", metavar="DATE",
+                        help="指定多个日期，如 --dates 2026-03-18 2026-03-19 2026-03-24")
+    parser.add_argument("--date-range", type=str, nargs=2, metavar=("START", "END"),
+                        help="指定日期范围，如 --date-range 2026-03-01 2026-03-24（自动取范围内有数据的交易日）")
+    parser.add_argument("--out", type=str, default=None)
+    parser.add_argument("--no-html", action="store_true", help="只生成 Markdown，跳过 HTML")
+    parser.add_argument("--require-today", action="store_true",
+                        help="若数据日期不是今天则报错退出（用于定时任务校验）")
+    args = parser.parse_args()
+
+    out_dir = Path(args.out) if args.out else REPORTS_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # ── 确定要生成的日期列表 ──
+    if args.dates:
+        target_dates = sorted(set(args.dates))
+    elif args.date_range:
+        start, end = args.date_range
+        all_dates = _available_dates()
+        target_dates = [d for d in all_dates if start <= d <= end]
+        if not target_dates:
+            print(f"范围 {start} ~ {end} 内无可用数据。")
+            sys.exit(1)
+        print(f"范围 {start} ~ {end} 内找到 {len(target_dates)} 个交易日：{target_dates}")
+    elif args.date:
+        target_dates = [args.date]
+    else:
+        # 自动取最新交易日
+        files = list(DATA_DIR.glob("*.parquet"))
+        dates = []
+        for f in files[:20]:
+            try:
+                tmp = pd.read_parquet(f, columns=["日期"])
+                tmp["日期"] = pd.to_datetime(tmp["日期"]).dt.strftime("%Y-%m-%d")
+                dates.append(tmp["日期"].max())
+            except Exception:
+                pass
+        latest = max(dates) if dates else None
+        if not latest:
+            print("无法读取行情数据，请先运行 daily 工作流。")
+            sys.exit(1)
+        target_dates = [latest]
+
+    # ── 单日模式：保留原有日期检查逻辑 ──
+    if len(target_dates) == 1:
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        if target_dates[0] == today_str:
+            print(f"[✓] 数据日期：{target_dates[0]}（今天）", flush=True)
+        else:
+            print(f"[!] 注意：将使用 {target_dates[0]} 的数据。", flush=True)
+        if args.require_today and target_dates[0] != today_str:
+            sys.exit(1)
+
+    # ── 逐日生成 ──
+    ok, fail = 0, 0
+    for i, d in enumerate(target_dates):
+        open_browser = sys.stdout.isatty() and len(target_dates) == 1
+        if _generate_one(d, out_dir, args.no_html, open_after=open_browser):
+            ok += 1
+        else:
+            fail += 1
+
+    if len(target_dates) > 1:
+        print(f"\n完成：成功 {ok} 份，跳过 {fail} 份。", flush=True)
