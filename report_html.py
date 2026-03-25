@@ -131,6 +131,16 @@ tr:hover td { background:#e3f2fd; }
          transition:color .15s, border-color .15s; }
 .nav a:hover { color:#fff; border-bottom-color:#90caf9; }
 
+/* ── Hist-bar（报告间导航） ── */
+.hist-bar { background:rgba(13,71,161,.9); padding:5px 16px;
+            display:flex; align-items:center; gap:10px; font-size:12px; }
+.hist-bar a { color:rgba(255,255,255,.85); text-decoration:none;
+              padding:2px 8px; border-radius:3px;
+              border:1px solid rgba(255,255,255,.2); }
+.hist-bar a:hover { background:rgba(255,255,255,.1); }
+.hist-bar .spacer { flex:1; }
+.hist-bar .hist-date { color:rgba(255,255,255,.5); font-size:11px; }
+
 /* ── Misc ── */
 .note { margin-top:10px; color:#555; font-size:13px; line-height:1.7; }
 .footer { text-align:center; color:#9e9e9e; font-size:12px; padding:20px 16px; }
@@ -472,8 +482,11 @@ _GLOSS_HTML = _table(["术语", "白话解释"], [
 
 # ── 主函数 ────────────────────────────────────────────────────────────────────
 
-def build_html(df: pd.DataFrame, target_date: str, out_path) -> None:
-    """生成独立 HTML 报告并写入 out_path。"""
+def build_html(df: pd.DataFrame, target_date: str, out_path, prev_date: "str | None" = None) -> None:
+    """生成独立 HTML 报告并写入 out_path。
+
+    prev_date: 上一份报告的日期字符串（YYYY-MM-DD），用于 hist-bar 导航链接。
+    """
     ctx         = prepare_report_context(df)
     total       = ctx["total"]
     n_up        = ctx["n_up"];       n_down      = ctx["n_down"];   n_flat      = ctx["n_flat"]
@@ -519,7 +532,17 @@ def build_html(df: pd.DataFrame, target_date: str, out_path) -> None:
         nav_items.insert(8, ("#s-risk", "⚠️ 风险"))
     nav_html = '<nav class="nav">' + "".join(f'<a href="{h}">{l}</a>' for h, l in nav_items) + "</nav>"
 
-    body = f"""{nav_html}
+    prev_link = ""
+    if prev_date:
+        prev_link = f'<a href="daily_{prev_date}.html">‹ {prev_date}</a>'
+    hist_bar = (f'<div class="hist-bar">'
+                f'<a href="../index.html">← 存档</a>'
+                f'{prev_link}'
+                f'<div class="spacer"></div>'
+                f'<span class="hist-date">{_e(target_date)}</span>'
+                f'</div>')
+
+    body = f"""{hist_bar}{nav_html}
 <div class="content">
 {alerts}
 {_section("🎯 今日速览", today_html, "c1", "s-overview")}

@@ -23,11 +23,24 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Step 3/3: Pushing report...
+echo Step 3/4: Pushing report...
 python push_report.py
 if errorlevel 1 (
     echo ERROR: push failed.
     exit /b 1
+)
+
+echo Step 4/4: Publishing to GitHub Pages...
+git add reports\daily_%TODAY%.html reports\daily_%TODAY%.md reports\manifest.json index.html
+git diff --cached --quiet
+if errorlevel 1 (
+    git commit -m "feat: daily report %TODAY%"
+    git push origin main
+    if errorlevel 1 (
+        echo WARNING: git push failed, report saved locally only.
+    )
+) else (
+    echo INFO: No new files to commit.
 )
 
 echo [%date% %time%] All done.

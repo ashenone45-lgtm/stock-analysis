@@ -13,15 +13,17 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+if getattr(sys.stdout, "encoding", "").lower() != "utf-8":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+if getattr(sys.stderr, "encoding", "").lower() != "utf-8":
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
 from crawler.config import INDUSTRY_BOARDS
-from crawler.report_utils import load_financial_snapshot, sector_table as _sector_table
+from crawler.report_utils import load_financial_snapshot, prepare_report_context, sector_table as _sector_table
 
 DATA_DIR = Path(__file__).parent / "data" / "market"
 NAMES_CSV = Path(__file__).parent / "data" / "stock_names.csv"
@@ -487,10 +489,20 @@ if __name__ == "__main__":
 
     if not args.no_html:
         from report_html import build_html
+        from gen_index import update_manifest_and_index, get_prev_date
         print("生成 HTML 报告...", flush=True)
+        manifest_path = out_dir / "manifest.json"
+        prev_date = get_prev_date(manifest_path, before_date=target_date)
         html_file = out_dir / f"daily_{target_date}.html"
-        build_html(df, target_date, html_file)
+        build_html(df, target_date, html_file, prev_date=prev_date)
         print(f"已保存: {html_file}")
+        ctx = prepare_report_context(df)
+        update_manifest_and_index(
+            ctx=ctx,
+            target_date=target_date,
+            reports_dir=out_dir,
+            index_path=Path(__file__).parent / "index.html",
+        )
         if sys.stdout.isatty():
             import os
             os.startfile(str(html_file))

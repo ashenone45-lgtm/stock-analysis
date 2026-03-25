@@ -1,0 +1,56 @@
+{
+  "generated_at": "2026-03-25T16:10:50",
+  "entries": [
+    {
+      "date": "2026-03-24",
+      "sentiment": "乐观偏多",
+      "se_emoji": "🚀",
+      "avg_chg": 2.9,
+      "n_up": 640,
+      "n_down": 43,
+      "n_flat": 2,
+      "n_limit_up": 10,
+      "n_limit_down": 0,
+      "total_vol": 4487.4,
+      "total": 685,
+      "top_sector": "互联网",
+      "top_sector_chg": 4.57,
+      "bot_sector": "证券",
+      "bot_sector_chg": 1.58
+    },
+    {
+      "date": "2026-03-19",
+      "sentiment": "明显偏空",
+      "se_emoji": "📉",
+      "avg_chg": -2.26,
+      "n_up": 70,
+      "n_down": 611,
+      "n_flat": 3,
+      "n_limit_up": 5,
+      "n_limit_down": 4,
+      "total_vol": 4847.7,
+      "total": 684,
+      "top_sector": "银行",
+      "top_sector_chg": -0.13,
+      "bot_sector": "黄金",
+      "bot_sector_chg": -6.09
+    },
+    {
+      "date": "2026-03-18",
+      "sentiment": "极度悲观",
+      "se_emoji": "🆘",
+      "avg_chg": null,
+      "n_up": 0,
+      "n_down": 0,
+      "n_flat": 685,
+      "n_limit_up": 0,
+      "n_limit_down": 0,
+      "total_vol": 4545.8,
+      "total": 685,
+      "top_sector": "IT服务",
+      "top_sector_chg": null,
+      "bot_sector": "黄金",
+      "bot_sector_chg": null
+    }
+  ]
+}
