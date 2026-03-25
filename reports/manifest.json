@@ -1,6 +1,23 @@
 {
-  "generated_at": "2026-03-25T16:40:13",
+  "generated_at": "2026-03-25T16:47:34",
   "entries": [
+    {
+      "date": "2026-03-25",
+      "sentiment": "乐观偏多",
+      "se_emoji": "🚀",
+      "avg_chg": 1.81,
+      "n_up": 408,
+      "n_down": 30,
+      "n_flat": 1,
+      "n_limit_up": 7,
+      "n_limit_down": 0,
+      "total_vol": 3126.3,
+      "total": 439,
+      "top_sector": "互联网",
+      "top_sector_chg": 3.46,
+      "bot_sector": "白酒",
+      "bot_sector_chg": 0.41
+    },
     {
       "date": "2026-03-24",
       "sentiment": "乐观偏多",
