@@ -325,6 +325,8 @@ def build_feishu_payload(d: dict) -> dict:
     elif d.get("html_exists"):
         content.append([_txt(f"📊 完整报告: {d['html_path']}")])
 
+    content.append([_txt("📅 历史存档: "), {"tag": "a", "text": "查看所有日报", "href": "https://ashenone45-lgtm.github.io/stock-analysis/"}])
+
     return {
         "msg_type": "post",
         "content": {
@@ -389,6 +391,7 @@ def build_dingtalk_payload(d: dict) -> dict:
 📉 **超卖候选(RSI<30):** {oversold_text}
 {sec_md}
 {html_line}
+📅 [历史存档](https://ashenone45-lgtm.github.io/stock-analysis/)
 """
 
     return {
