@@ -1,6 +1,9 @@
 @echo off
 cd /d "%~dp0"
 
+rem 防止 pyarrow 的 partition_alloc 在多线程并发时与 Windows Edge WebView2 冲突
+set ARROW_DEFAULT_MEMORY_POOL=system
+
 echo [%date% %time%] Starting daily workflow...
 
 for /f %%d in ('powershell -NoProfile -Command "Get-Date -Format yyyy-MM-dd"') do set TODAY=%%d

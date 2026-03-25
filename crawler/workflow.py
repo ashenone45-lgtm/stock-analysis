@@ -11,7 +11,11 @@
   mcp__ruflo__workflow_create: 注册定时触发
 """
 import logging
+import os
 import sys
+
+# 防止 pyarrow partition_alloc 在 Windows 多线程并发写 parquet 时与 Edge WebView2 冲突
+os.environ.setdefault("ARROW_DEFAULT_MEMORY_POOL", "system")
 
 from crawler.fetchers.financial import fetch_financial_batch
 from crawler.fetchers.market import fetch_daily_spot, fetch_history_batch

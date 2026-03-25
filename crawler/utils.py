@@ -1,5 +1,6 @@
 """共享工具：带指数退避的重试 + 符合规范的错误文件日志。"""
 import logging
+import random
 import time
 from datetime import datetime
 from pathlib import Path
@@ -39,9 +40,10 @@ def retry_with_backoff(func, stock_code: str = "N/A", retries: int = 3):
             return func()
         except Exception as e:
             last_exc = e
-            wait = 2 ** attempt
+            # 指数退避 + 随机抖动，避免多线程同时重试时再次撞限流
+            wait = 2 ** attempt + random.uniform(0, 1)
             logging.getLogger(__name__).warning(
-                "[%s] Attempt %d/%d failed: %s. Retrying in %ds...",
+                "[%s] Attempt %d/%d failed: %s. Retrying in %.1fs...",
                 stock_code, attempt + 1, retries, e, wait,
             )
             if attempt < retries - 1:
