@@ -2,6 +2,8 @@
 
 基于 akshare 的 A 股高新行业数据爬虫，覆盖 IT/互联网、半导体、卫星航天、有色金属等行业，约 523 只股票。每日收盘后自动生成分析报告并推送到飞书/钉钉。
 
+**📊 [历史日报存档](https://ashenone45-lgtm.github.io/stock-analysis/)**
+
 ## 安装
 
 ```bash
