@@ -262,9 +262,9 @@ def _build_overview_html(sector_df, sentiment, se_emoji, avg_chg, avg_cls,
     if not sector_df.empty:
         ts, bs = sector_df.iloc[0], sector_df.iloc[-1]
         top_sec_str = (f"<br>🏆 领涨：<b>{_e(ts['行业'])}</b> "
-                       f"<span class='up'>{_chg_str(ts['平均涨跌'])}</span>"
+                       f"<span class='{_chg_cls(ts['平均涨跌'])}'>{_chg_str(ts['平均涨跌'])}</span>"
                        f" &nbsp;｜&nbsp; 🔻 拖累：<b>{_e(bs['行业'])}</b> "
-                       f"<span class='dn'>{_chg_str(bs['平均涨跌'])}</span>")
+                       f"<span class='{_chg_cls(bs['平均涨跌'])}'>{_chg_str(bs['平均涨跌'])}</span>")
     today_html = (f'<div class="today">'
                   f'{_e(se_emoji)} 情绪：<b>{_e(sentiment)}</b> &nbsp;｜&nbsp; '
                   f'均涨：<b class="{avg_cls}">{_chg_str(avg_chg)}</b> &nbsp;｜&nbsp; '

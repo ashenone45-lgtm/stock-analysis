@@ -228,8 +228,8 @@ def _card_html(entry: dict, reports_dir: Path) -> str:
     if top_sector:
         sector_html = (
             f'<div class="card-sectors">'
-            f'领涨 <span class="sec-up">{_e(top_sector)} {_chg_str(top_sector_chg)}</span>'
-            f' &nbsp;·&nbsp; 拖累 <span class="sec-dn">{_e(bot_sector or "—")} {_chg_str(bot_sector_chg)}</span>'
+            f'领涨 <span class="{"sec-up" if top_sector_chg is not None and top_sector_chg >= 0 else "sec-dn"}">{_e(top_sector)} {_chg_str(top_sector_chg)}</span>'
+            f' &nbsp;·&nbsp; 拖累 <span class="{"sec-up" if bot_sector_chg is not None and bot_sector_chg >= 0 else "sec-dn"}">{_e(bot_sector or "—")} {_chg_str(bot_sector_chg)}</span>'
             f'</div>'
         )
 
