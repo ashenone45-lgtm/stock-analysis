@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-25T16:32:35",
+  "generated_at": "2026-03-25T16:40:13",
   "entries": [
     {
       "date": "2026-03-24",
@@ -71,19 +71,19 @@
     },
     {
       "date": "2026-03-18",
-      "sentiment": "极度悲观",
-      "se_emoji": "🆘",
-      "avg_chg": null,
-      "n_up": 0,
-      "n_down": 0,
-      "n_flat": 685,
-      "n_limit_up": 0,
+      "sentiment": "乐观偏多",
+      "se_emoji": "🚀",
+      "avg_chg": 1.75,
+      "n_up": 497,
+      "n_down": 168,
+      "n_flat": 20,
+      "n_limit_up": 14,
       "n_limit_down": 0,
       "total_vol": 4545.8,
       "total": 685,
-      "top_sector": "IT服务",
-      "top_sector_chg": null,
-      "bot_sector": "黄金",
+      "top_sector": "卫星航天",
+      "top_sector_chg": 3.31,
+      "bot_sector": "其他",
       "bot_sector_chg": null
     },
     {
