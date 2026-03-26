@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>港股日报 2026-03-26</title>
+<style>
+:root {
+  --up:#e53935; --down:#2e7d32; --navy:#1a237e;
+  --bg:#f0f2f5; --card-bg:#fff; --text:#212121; --border:#e0e0e0;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+       background:var(--bg); color:var(--text); font-size:14px; }
+
+/* ── Header ── */
+.hdr { background:linear-gradient(135deg,#0d47a1,#1a237e); color:#fff; padding:20px 32px 24px; }
+.hdr h1 { font-size:22px; letter-spacing:2px; margin-bottom:4px; }
+.hdr .sub { font-size:12px; opacity:.75; margin-bottom:0; }
+.hdr-divider { border:none; border-top:1px solid rgba(255,255,255,.18); margin:14px 0; }
+.cards { display:flex; gap:8px; flex-wrap:wrap; }
+.card { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2);
+        border-radius:6px; padding:8px 14px; min-width:88px; }
+.card .lbl { font-size:11px; opacity:.75; margin-bottom:3px; }
+.card .val { font-size:16px; font-weight:700; }
+.card .val.up { color:#ff8a80; }
+.card .val.dn { color:#69f0ae; }
+.card .val.ntr { color:#fff9c4; }
+
+/* ── Layout ── */
+.content { max-width:1100px; margin:0 auto; padding:16px; }
+.two-col { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+@media(max-width:720px){ .two-col { grid-template-columns:1fr; } }
+
+/* ── Section ── */
+.sec { background:#fff; border-radius:8px;
+       box-shadow:0 1px 4px rgba(0,0,0,.1); margin-bottom:16px; overflow:hidden; }
+.sec-t { padding:9px 16px; font-size:14px; font-weight:700; color:#fff; }
+.sec-b { padding:14px 16px; overflow-x:auto; }
+
+/* section title colors */
+.c1{background:#1565c0} .c2{background:#283593} .c3{background:#4527a0}
+.c4{background:#6a1b9a} .c5{background:#880e4f} .c6{background:#b71c1c}
+.c7{background:#e65100} .c8{background:#1b5e20} .c9{background:#37474f}
+.c10{background:#263238}
+
+/* ── Table ── */
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th { background:#37474f; color:#fff; padding:7px 10px; text-align:left; white-space:nowrap; }
+td { padding:6px 10px; border-bottom:1px solid #f0f0f0; vertical-align:middle; }
+tr:nth-child(even) td { background:#fafafa; }
+tr:hover td { background:#e3f2fd; }
+
+/* ── Color ── */
+.up { color:var(--up); font-weight:600; }
+.dn { color:var(--down); font-weight:600; }
+
+/* ── Tags ── */
+.tag { display:inline-block; padding:2px 7px; border-radius:3px; font-size:11px; }
+.t-strong{background:#ffebee;color:#c62828} .t-bull{background:#fff3e0;color:#e65100}
+.t-neut{background:#f5f5f5;color:#616161}   .t-bear{background:#e8f5e9;color:#2e7d32}
+.t-weak{background:#e0f2f1;color:#00695c}
+
+/* ── Callout ── */
+.callout { background:#e8eaf6; border-left:4px solid #3f51b5;
+           padding:10px 14px; border-radius:0 6px 6px 0;
+           font-size:13px; line-height:1.8; color:#283593; margin-bottom:12px; }
+.callout b { color:#0d47a1; }
+.callout.warn { background:#fff8e1; border-left-color:#ffa000; color:#6d4c00; }
+.callout.warn b { color:#e65100; }
+.callout.info { background:#e3f2fd; border-left-color:#1e88e5; color:#0d47a1; }
+
+/* ── Alert ── */
+.alert { background:#fff8e1; border-left:4px solid #ffa000;
+         padding:8px 14px; margin-bottom:12px; border-radius:0 6px 6px 0;
+         font-weight:700; color:#e65100; font-size:14px; }
+
+/* ── Today card ── */
+.today { background:#e8eaf6; border-radius:6px; padding:12px 16px; line-height:2; font-size:14px; }
+.today b { color:#1a237e; }
+
+/* ── Sector bar chart ── */
+.bar-chart { margin-bottom:10px; }
+.bar-row { display:flex; align-items:center; gap:8px; margin:5px 0; }
+.bar-nm { width:68px; font-size:12px; text-align:right; color:#333;
+          white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.bar-ax { flex:1; position:relative; height:20px; background:#f5f5f5; border-radius:3px; }
+.bar-cx { position:absolute; top:0; bottom:0; left:50%; width:1px; background:#bbb; }
+.bar-fl { position:absolute; top:2px; bottom:2px; border-radius:2px; }
+.bar-vl { width:52px; font-size:12px; font-weight:600; }
+
+/* ── Sector detail ── */
+.sd-block { margin-bottom:18px; }
+.sd-block:last-child { margin-bottom:0; }
+.sec-detail-hdr { padding:6px 12px; border-radius:4px 4px 0 0;
+                  font-weight:700; font-size:13px; }
+.sec-detail-hdr.up { background:#ffebee; color:#c62828; border-left:3px solid var(--up); }
+.sec-detail-hdr.dn { background:#e8f5e9; color:#1b5e20; border-left:3px solid var(--down); }
+.sd-sub { font-weight:400; font-size:12px; opacity:.8; }
+
+/* ── Sector tags ── */
+.sector-tags { display:flex; flex-wrap:wrap; gap:6px; }
+.stag { display:inline-flex; align-items:center; gap:5px; padding:4px 11px;
+        border-radius:4px; font-size:12px; font-weight:600;
+        background:rgba(255,255,255,.13); border:1px solid rgba(255,255,255,.22);
+        color:#fff; white-space:nowrap; }
+.stag .sv { font-size:12px; font-weight:700; }
+.stag.sup .sv { color:#ff8a80; }
+.stag.sdn .sv { color:#69f0ae; }
+
+/* ── Nav ── */
+.nav { position:sticky; top:0; z-index:100;
+       background:rgba(26,35,126,.97); backdrop-filter:blur(6px);
+       border-bottom:1px solid rgba(255,255,255,.1);
+       padding:0 16px; overflow-x:auto; white-space:nowrap; }
+.nav a { display:inline-block; color:rgba(255,255,255,.8); text-decoration:none;
+         font-size:12px; padding:9px 10px; border-bottom:2px solid transparent;
+         transition:color .15s, border-color .15s; }
+.nav a:hover { color:#fff; border-bottom-color:#90caf9; }
+
+/* ── Hist-bar（报告间导航） ── */
+.hist-bar { background:rgba(13,71,161,.9); padding:5px 16px;
+            display:flex; align-items:center; gap:10px; font-size:12px; }
+.hist-bar a { color:rgba(255,255,255,.85); text-decoration:none;
+              padding:2px 8px; border-radius:3px;
+              border:1px solid rgba(255,255,255,.2); }
+.hist-bar a:hover { background:rgba(255,255,255,.1); }
+.hist-bar .spacer { flex:1; }
+.hist-bar .hist-date { color:rgba(255,255,255,.5); font-size:11px; }
+
+/* ── Misc ── */
+.note { margin-top:10px; color:#555; font-size:13px; line-height:1.7; }
+.footer { text-align:center; color:#9e9e9e; font-size:12px; padding:20px 16px; }
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>📊 港股市场日报 &middot; 2026-03-26</h1>
+  <div class="sub">覆盖 34 只股票 &middot; 10 个板块 &middot; 生成于 09:56</div>
+  <div class="sector-tags"><span class="stag sup">软件开发 <span class="sv">+3.96%</span></span><span class="stag sup">医疗器械 <span class="sv">+0.54%</span></span><span class="stag sup">银行 <span class="sv">+0.50%</span></span><span class="stag sdn">锂电池 <span class="sv">-0.98%</span></span><span class="stag sdn">有色金属 <span class="sv">-1.63%</span></span><span class="stag sdn">证券 <span class="sv">-1.64%</span></span><span class="stag sdn">IT服务 <span class="sv">-1.72%</span></span><span class="stag sdn">半导体 <span class="sv">-1.96%</span></span><span class="stag sdn">黄金 <span class="sv">-2.57%</span></span><span class="stag sdn">互联网 <span class="sv">-2.61%</span></span></div>
+  <hr class="hdr-divider">
+  <div class="cards">
+    <div class="card"><div class="lbl">上涨</div><div class="val up">7</div></div>
+    <div class="card"><div class="lbl">下跌</div><div class="val dn">26</div></div>
+    <div class="card"><div class="lbl">平盘</div><div class="val ntr">1</div></div>
+    <div class="card"><div class="lbl">均涨幅</div><div class="val dn">-1.07%</div></div>
+    <div class="card"><div class="lbl">成交额</div><div class="val ntr">148亿</div></div>
+    <div class="card"><div class="lbl">涨停/跌停</div><div class="val ntr">0/1</div></div>
+    <div class="card"><div class="lbl">市场情绪</div><div class="val ntr">😐谨慎偏空</div></div>
+  </div>
+</div>
+<div class="hist-bar"><a href="../../index_hk.html">← 存档</a><div class="spacer"></div><span class="hist-date">2026-03-26</span></div><nav class="nav"><a href="#s-overview">🎯 速览</a><a href="#s-sector">🏭 板块</a><a href="#s-detail">🔎 个股详情</a><a href="#s-gain">🚀 涨幅榜</a><a href="#s-loss">📉 跌幅榜</a><a href="#s-strong">⚡ 强势股</a><a href="#s-vol">💰 资金</a><a href="#s-oversold">🔍 超跌</a><a href="#s-risk">⚠️ 风险</a><a href="#s-summary">📊 概况</a><a href="#s-tech">🔬 技术</a><a href="#s-concl">📋 结论</a><a href="#s-gloss">📖 说明</a></nav>
+<div class="content">
+
+<div class="sec" id="s-overview"><div class="sec-t c1">🎯 今日速览</div><div class="sec-b"><div class="today">😐 情绪：<b>谨慎偏空</b> &nbsp;｜&nbsp; 均涨：<b class="dn">-1.07%</b> &nbsp;｜&nbsp; 成交：<b>147.8亿</b><br>📈 上涨 <b>7</b> 只 &nbsp;·&nbsp; 📉 下跌 <b>26</b> 只 &nbsp;·&nbsp; ➖ 平盘 <b>1</b> 只 &nbsp;｜&nbsp; 涨停 <b>0</b> 只 &nbsp;·&nbsp; 跌停 <b>1</b> 只<br>🏆 领涨：<b>软件开发</b> <span class='up'>+3.96%</span> &nbsp;｜&nbsp; 🔻 拖累：<b>互联网</b> <span class='dn'>-2.61%</span></div></div></div>
+<div class="sec" id="s-sector"><div class="sec-t c2">🏭 板块表现</div><div class="sec-b"><div class="callout">🏆 领涨：<b>软件开发</b> <span class="up">+3.96%</span>　·　成交 2.3亿，1涨/1跌　　🔻 拖累：<b>互联网</b> <span class="dn">-2.61%</span>　·　成交 117.9亿，1涨/6跌</div><div class="bar-chart"><div class="bar-row"><div class="bar-nm">软件开发</div><div class="bar-ax"><div class="bar-cx"></div><div class="bar-fl" style="left:50%;width:50.0%;background:var(--up);"></div></div><div class="bar-vl up">+3.96%</div></div><div class="bar-row"><div class="bar-nm">医疗器械</div><div class="bar-ax"><div class="bar-cx"></div><div class="bar-fl" style="left:50%;width:6.8%;background:var(--up);"></div></div><div class="bar-vl up">+0.54%</div></div><div class="bar-row"><div class="bar-nm">银行</div><div class="bar-ax"><div class="bar-cx"></div><div class="bar-fl" style="left:50%;width:6.4%;background:var(--up);"></div></div><div class="bar-vl up">+0.50%</div></div><div class="bar-row"><div class="bar-nm">锂电池</div><div class="bar-ax"><div class="bar-cx"></div><div class="bar-fl" style="right:50%;width:12.4%;background:var(--down);"></div></div><div class="bar-vl dn">-0.98%</div></div><div class="bar-row"><div class="bar-nm">有色金属</div><div class="bar-ax"><div class="bar-cx"></div><div class="bar-fl" style="right:50%;width:20.6%;background:var(--down);"></div></div><div class="bar-vl dn">-1.63%</div></div><div class="bar-row"><div class="bar-nm">证券</div><div class="bar-ax"><div class="bar-cx"></div><div class="bar-fl" style="right:50%;width:20.7%;background:var(--down);"></div></div><div class="bar-vl dn">-1.64%</div></div><div class="bar-row"><div class="bar-nm">IT服务</div><div class="bar-ax"><div class="bar-cx"></div><div class="bar-fl" style="right:50%;width:21.7%;background:var(--down);"></div></div><div class="bar-vl dn">-1.72%</div></div><div class="bar-row"><div class="bar-nm">半导体</div><div class="bar-ax"><div class="bar-cx"></div><div class="bar-fl" style="right:50%;width:24.7%;background:var(--down);"></div></div><div class="bar-vl dn">-1.96%</div></div><div class="bar-row"><div class="bar-nm">黄金</div><div class="bar-ax"><div class="bar-cx"></div><div class="bar-fl" style="right:50%;width:32.4%;background:var(--down);"></div></div><div class="bar-vl dn">-2.57%</div></div><div class="bar-row"><div class="bar-nm">互联网</div><div class="bar-ax"><div class="bar-cx"></div><div class="bar-fl" style="right:50%;width:33.0%;background:var(--down);"></div></div><div class="bar-vl dn">-2.61%</div></div></div><table><thead><tr><th>行业</th><th>平均涨跌</th><th>成交额</th><th>涨/跌</th><th>强势</th><th>量比</th></tr></thead><tbody><tr><td>软件开发</td><td class="up"><b>+3.96%</b></td><td>2.3亿</td><td>1/1</td><td>0只</td><td>0.46</td></tr><tr><td>医疗器械</td><td class="up"><b>+0.54%</b></td><td>0.2亿</td><td>1/1</td><td>0只</td><td>0.17</td></tr><tr><td>银行</td><td class="up"><b>+0.50%</b></td><td>10.9亿</td><td>4/1</td><td>0只</td><td>0.18</td></tr><tr><td>锂电池</td><td class="dn"><b>-0.98%</b></td><td>0.0亿</td><td>0/2</td><td>0只</td><td>0.04</td></tr><tr><td>有色金属</td><td class="dn"><b>-1.63%</b></td><td>9.2亿</td><td>0/5</td><td>0只</td><td>0.11</td></tr><tr><td>证券</td><td class="dn"><b>-1.64%</b></td><td>0.3亿</td><td>0/3</td><td>0只</td><td>0.05</td></tr><tr><td>IT服务</td><td class="dn"><b>-1.72%</b></td><td>0.7亿</td><td>0/2</td><td>0只</td><td>0.16</td></tr><tr><td>半导体</td><td class="dn"><b>-1.96%</b></td><td>5.1亿</td><td>0/2</td><td>0只</td><td>0.10</td></tr><tr><td>黄金</td><td class="dn"><b>-2.57%</b></td><td>1.3亿</td><td>0/3</td><td>0只</td><td>0.06</td></tr><tr><td>互联网</td><td class="dn"><b>-2.61%</b></td><td>117.9亿</td><td>1/6</td><td>0只</td><td>0.38</td></tr></tbody></table></div></div>
+<div class="sec" id="s-detail"><div class="sec-t c2">🔎 板块个股详情</div><div class="sec-b"><div class="callout info">每个板块列出当日<b>涨幅最高 3 只</b>和<b>跌幅最深 2 只</b>，快速定位板块内强弱分化。RSI&gt;70 表示短期涨得偏快；RSI&lt;30 表示短期跌得偏深。</div><div class="sd-block"><div class="sec-detail-hdr up">软件开发 &nbsp; ▲+3.96% &nbsp;<span class="sd-sub">1涨/1跌，共2只</span></div><table><thead><tr><th>代码</th><th>名称</th><th>涨跌幅</th><th>收盘</th><th>热度RSI</th><th>趋势</th></tr></thead><tbody><tr><td>03888</td><td>金山软件</td><td class="up">+8.20%</td><td>24.82</td><td>—</td><td><span class="tag t-neut">震荡—</span></td></tr><tr><td>00354</td><td>中软国际</td><td class="dn">-0.28%</td><td>3.53</td><td>—</td><td><span class="tag t-neut">震荡—</span></td></tr></tbody></table></div><div class="sd-block"><div class="sec-detail-hdr up">医疗器械 &nbsp; ▲+0.54% &nbsp;<span class="sd-sub">1涨/1跌，共2只</span></div><table><thead><tr><th>代码</th><th>名称</th><th>涨跌幅</th><th>收盘</th><th>热度RSI</th><th>趋势</th></tr></thead><tbody><tr><td>01858</td><td>春立医疗</td><td class="up">+1.29%</td><td>12.60</td><td>—</td><td><span class="tag t-bull">偏多↑</span></td></tr><tr><td>00853</td><td>微创医疗</td><td class="dn">-0.21%</td><td>9.71</td><td>—</td><td><span class="tag t-neut">震荡—</span></td></tr></tbody></table></div><div class="sd-block"><div class="sec-detail-hdr up">银行 &nbsp; ▲+0.50% &nbsp;<span class="sd-sub">4涨/1跌，共5只</span></div><table><thead><tr><th>代码</th><th>名称</th><th>涨跌幅</th><th>收盘</th><th>热度RSI</th><th>趋势</th></tr></thead><tbody><tr><td>03988</td><td>中国银行</td><td class="up">+1.46%</td><td>4.87</td><td>—</td><td><span class="tag t-bull">偏多↑</span></td></tr><tr><td>03328</td><td>交通银行</td><td class="up">+1.29%</td><td>7.06</td><td>—</td><td><span class="tag t-bull">偏多↑</span></td></tr><tr><td>01288</td><td>农业银行</td><td class="up">+0.37%</td><td>5.44</td><td>—</td><td><span class="tag t-bull">偏多↑</span></td></tr><tr><td>00939</td><td>建设银行</td><td class="dn">-0.25%</td><td>8.06</td><td>—</td><td><span class="tag t-neut">震荡—</span></td></tr><tr><td>03968</td><td>招商银行</td><td class="up">+0.00%</td><td>48.98</td><td>—</td><td><span class="tag t-neut">震荡—</span></td></tr></tbody></table></div><div class="sd-block"><div class="sec-detail-hdr dn">锂电池 &nbsp; ▼-0.98% &nbsp;<span class="sd-sub">0涨/2跌，共2只</span></div><table><thead><tr><th>代码</th><th>名称</th><th>涨跌幅</th><th>收盘</th><th>热度RSI</th><th>趋势</th></tr></thead><tbody><tr><td>02460</td><td>赣锋锂业</td><td class="dn">-0.55%</td><td>9.03</td><td>—</td><td><span class="tag t-neut">震荡—</span></td></tr><tr><td>06100</td><td>天齐锂业</td><td class="dn">-1.41%</td><td>2.80</td><td>—</td><td><span class="tag t-bull">偏多↑</span></td></tr></tbody></table></div><div class="sd-block"><div class="sec-detail-hdr dn">有色金属 &nbsp; ▼-1.63% &nbsp;<span class="sd-sub">0涨/5跌，共5只</span></div><table><thead><tr><th>代码</th><th>名称</th><th>涨跌幅</th><th>收盘</th><th>热度RSI</th><th>趋势</th></tr></thead><tbody><tr><td>00358</td><td>江西铜业</td><td class="dn">-0.54%</td><td>36.96</td><td>—</td><td><span class="tag t-bull">偏多↑</span></td></tr><tr><td>01378</td><td>中国宏桥</td><td class="dn">-1.32%</td><td>34.44</td><td>—</td><td><span class="tag t-neut">震荡—</span></td></tr><tr><td>02600</td><td>中国铝业</td><td class="dn">-1.52%</td><td>11.03</td><td>—</td><td><span class="tag t-neut">震荡—</span></td></tr><tr><td>02899</td><td>紫金矿业</td><td class="dn">-2.47%</td><td>34.74</td><td>—</td><td><span class="tag t-bull">偏多↑</span></td></tr><tr><td>03993</td><td>洛阳钼业</td><td class="dn">-2.31%</td><td>16.92</td><td>—</td><td><span class="tag t-neut">震荡—</span></td></tr></tbody></table></div><div class="sd-block"><div class="sec-detail-hdr dn">证券 &nbsp; ▼-1.64% &nbsp;<span class="sd-sub">0涨/3跌，共3只</span></div><table><thead><tr><th>代码</th><th>名称</th><th>涨跌幅</th><th>收盘</th><th>热度RSI</th><th>趋势</th></tr></thead><tbody><tr><td>06886</td><td>华泰证券</td><td class="dn">-1.58%</td><td>15.60</td><td>—</td><td><span class="tag t-neut">震荡—</span></td></tr><tr><td>06881</td><td>中国银河</td><td class="dn">-1.64%</td><td>8.97</td><td>—</td><td><span class="tag t-neut">震荡—</span></td></tr><tr><td>06030</td><td>中信证券</td><td class="dn">-1.70%</td><td>24.26</td><td>—</td><td><span class="tag t-neut">震荡—</span></td></tr></tbody></table></div><div class="sd-block"><div class="sec-detail-hdr dn">IT服务 &nbsp; ▼-1.72% &nbsp;<span class="sd-sub">0涨/2跌，共2只</span></div><table><thead><tr><th>代码</th><th>名称</th><th>涨跌幅</th><th>收盘</th><th>热度RSI</th><th>趋势</th></tr></thead><tbody><tr><td>00268</td><td>金蝶国际</td><td class="dn">-1.52%</td><td>9.09</td><td>—</td><td><span class="tag t-neut">震荡—</span></td></tr><tr><td>02013</td><td>微盟集团</td><td class="dn">-1.92%</td><td>1.53</td><td>—</td><td><span class="tag t-neut">震荡—</span></td></tr></tbody></table></div><div class="sd-block"><div class="sec-detail-hdr dn">半导体 &nbsp; ▼-1.96% &nbsp;<span class="sd-sub">0涨/2跌，共2只</span></div><table><thead><tr><th>代码</th><th>名称</th><th>涨跌幅</th><th>收盘</th><th>热度RSI</th><th>趋势</th></tr></thead><tbody><tr><td>01347</td><td>华虹半导体</td><td class="dn">-1.52%</td><td>87.30</td><td>—</td><td><span class="tag t-neut">震荡—</span></td></tr><tr><td>00981</td><td>中芯国际</td><td class="dn">-2.39%</td><td>55.15</td><td>—</td><td><span class="tag t-neut">震荡—</span></td></tr></tbody></table></div><div class="sd-block"><div class="sec-detail-hdr dn">黄金 &nbsp; ▼-2.57% &nbsp;<span class="sd-sub">0涨/3跌，共3只</span></div><table><thead><tr><th>代码</th><th>名称</th><th>涨跌幅</th><th>收盘</th><th>热度RSI</th><th>趋势</th></tr></thead><tbody><tr><td>03330</td><td>灵宝黄金</td><td class="dn">-2.15%</td><td>24.54</td><td>—</td><td><span class="tag t-bull">偏多↑</span></td></tr><tr><td>01818</td><td>招金矿业</td><td class="dn">-2.72%</td><td>29.38</td><td>—</td><td><span class="tag t-bull">偏多↑</span></td></tr><tr><td>02099</td><td>中国黄金国际</td><td class="dn">-2.84%</td><td>150.40</td><td>—</td><td><span class="tag t-bull">偏多↑</span></td></tr></tbody></table></div><div class="sd-block"><div class="sec-detail-hdr dn">互联网 &nbsp; ▼-2.61% &nbsp;<span class="sd-sub">1涨/6跌，共7只</span></div><table><thead><tr><th>代码</th><th>名称</th><th>涨跌幅</th><th>收盘</th><th>热度RSI</th><th>趋势</th></tr></thead><tbody><tr><td>09618</td><td>京东集团</td><td class="up">+2.14%</td><td>114.80</td><td>—</td><td><span class="tag t-bull">偏多↑</span></td></tr><tr><td>09626</td><td>哔哩哔哩</td><td class="dn">-0.38%</td><td>185.50</td><td>—</td><td><span class="tag t-neut">震荡—</span></td></tr><tr><td>00700</td><td>腾讯控股</td><td class="dn">-0.49%</td><td>503.00</td><td>—</td><td><span class="tag t-neut">震荡—</span></td></tr><tr><td>01024</td><td>快手</td><td class="dn">-13.33%</td><td>45.98</td><td>—</td><td><span class="tag t-neut">震荡—</span></td></tr><tr><td>09988</td><td>阿里巴巴</td><td class="dn">-2.64%</td><td>125.50</td><td>—</td><td><span class="tag t-neut">震荡—</span></td></tr></tbody></table></div></div></div>
+<div class="two-col">
+  <div class="sec" id="s-gain"><div class="sec-t c3">🚀 涨幅榜 TOP10</div><div class="sec-b"><table><thead><tr><th>代码</th><th>名称</th><th>涨跌幅</th><th>收盘</th><th>成交额</th><th>热度RSI</th><th>趋势</th></tr></thead><tbody><tr><td>03888</td><td>金山软件</td><td class="up">+8.20%</td><td>24.82</td><td>2.1亿</td><td>nan</td><td><span class="tag t-neut">震荡—</span></td></tr><tr><td>09618</td><td>京东集团</td><td class="up">+2.14%</td><td>114.80</td><td>4.7亿</td><td>nan</td><td><span class="tag t-bull">偏多↑</span></td></tr><tr><td>03988</td><td>中国银行</td><td class="up">+1.46%</td><td>4.87</td><td>4.7亿</td><td>nan</td><td><span class="tag t-bull">偏多↑</span></td></tr><tr><td>01858</td><td>春立医疗</td><td class="up">+1.29%</td><td>12.60</td><td>0.0亿</td><td>nan</td><td><span class="tag t-bull">偏多↑</span></td></tr><tr><td>03328</td><td>交通银行</td><td class="up">+1.29%</td><td>7.06</td><td>0.6亿</td><td>nan</td><td><span class="tag t-bull">偏多↑</span></td></tr><tr><td>01288</td><td>农业银行</td><td class="up">+0.37%</td><td>5.44</td><td>0.6亿</td><td>nan</td><td><span class="tag t-bull">偏多↑</span></td></tr><tr><td>01398</td><td>工商银行</td><td class="up">+0.15%</td><td>6.58</td><td>1.5亿</td><td>nan</td><td><span class="tag t-neut">震荡—</span></td></tr><tr><td>03968</td><td>招商银行</td><td class="up">+0.00%</td><td>48.98</td><td>0.7亿</td><td>nan</td><td><span class="tag t-neut">震荡—</span></td></tr><tr><td>00853</td><td>微创医疗</td><td class="dn">-0.21%</td><td>9.71</td><td>0.2亿</td><td>nan</td><td><span class="tag t-neut">震荡—</span></td></tr><tr><td>00939</td><td>建设银行</td><td class="dn">-0.25%</td><td>8.06</td><td>2.9亿</td><td>nan</td><td><span class="tag t-neut">震荡—</span></td></tr></tbody></table></div></div>
+  <div class="sec" id="s-loss"><div class="sec-t c4">📉 跌幅榜 TOP10</div><div class="sec-b"><table><thead><tr><th>代码</th><th>名称</th><th>涨跌幅</th><th>收盘</th><th>成交额</th><th>热度RSI</th><th>趋势</th></tr></thead><tbody><tr><td>01024</td><td>快手</td><td class="dn">-13.33%</td><td>45.98</td><td>35.4亿</td><td>nan</td><td><span class="tag t-neut">震荡—</span></td></tr><tr><td>02099</td><td>中国黄金国际</td><td class="dn">-2.84%</td><td>150.40</td><td>0.3亿</td><td>nan</td><td><span class="tag t-bull">偏多↑</span></td></tr><tr><td>01818</td><td>招金矿业</td><td class="dn">-2.72%</td><td>29.38</td><td>0.5亿</td><td>nan</td><td><span class="tag t-bull">偏多↑</span></td></tr><tr><td>09988</td><td>阿里巴巴</td><td class="dn">-2.64%</td><td>125.50</td><td>27.0亿</td><td>nan</td><td><span class="tag t-neut">震荡—</span></td></tr><tr><td>03690</td><td>美团</td><td class="dn">-2.50%</td><td>87.75</td><td>25.9亿</td><td>nan</td><td><span class="tag t-bull">偏多↑</span></td></tr><tr><td>02899</td><td>紫金矿业</td><td class="dn">-2.47%</td><td>34.74</td><td>3.0亿</td><td>nan</td><td><span class="tag t-bull">偏多↑</span></td></tr><tr><td>00981</td><td>中芯国际</td><td class="dn">-2.39%</td><td>55.15</td><td>3.9亿</td><td>nan</td><td><span class="tag t-neut">震荡—</span></td></tr><tr><td>03993</td><td>洛阳钼业</td><td class="dn">-2.31%</td><td>16.92</td><td>1.6亿</td><td>nan</td><td><span class="tag t-neut">震荡—</span></td></tr><tr><td>03330</td><td>灵宝黄金</td><td class="dn">-2.15%</td><td>24.54</td><td>0.4亿</td><td>nan</td><td><span class="tag t-bull">偏多↑</span></td></tr><tr><td>02013</td><td>微盟集团</td><td class="dn">-1.92%</td><td>1.53</td><td>0.2亿</td><td>nan</td><td><span class="tag t-neut">震荡—</span></td></tr></tbody></table></div></div>
+</div>
+<div class="sec" id="s-strong"><div class="sec-t c5">⚡ 强势股（均线向上排列 + 动能向上）</div><div class="sec-b"><div class="callout">这些股票同时满足：<b>短中长均线向上排列</b>（5日&gt;20日&gt;60日，趋势健康） + <b>动能向上（MACD金叉）</b>（买入信号），是当前市场中技术面最强的品种。「距60日均线」为正值表示已涨破均线，数值越大说明强势持续越久，但也要留意追高风险。</div><p style='margin-top:10px'>今日无强势股（评分≥3）</p></div></div>
+<div class="sec" id="s-vol"><div class="sec-t c7">💰 资金活跃度 TOP5</div><div class="sec-b"><div class="callout info"><b>量比</b> = 今日成交量 ÷ 近5日平均成交量。&gt;2 表示放量（大量资金涌入）；&lt;0.5 表示缩量（市场冷清）；≈1 属正常水平。高换手率 + 放量上涨，通常是主力资金积极介入的信号。</div><table><thead><tr><th>代码</th><th>名称</th><th>涨跌幅</th><th>成交额</th><th>换手率</th><th>量比</th><th>状态</th></tr></thead><tbody><tr><td>01024</td><td>快手</td><td class="dn">-13.33%</td><td>35.4亿</td><td>2.09%</td><td>1.48</td><td>正常</td></tr><tr><td>09988</td><td>阿里巴巴</td><td class="dn">-2.64%</td><td>27.0亿</td><td>0.11%</td><td>0.18</td><td>缩量</td></tr><tr><td>03690</td><td>美团</td><td class="dn">-2.50%</td><td>25.9亿</td><td>0.52%</td><td>0.33</td><td>缩量</td></tr><tr><td>00700</td><td>腾讯控股</td><td class="dn">-0.49%</td><td>22.9亿</td><td>0.05%</td><td>0.17</td><td>缩量</td></tr><tr><td>09618</td><td>京东集团</td><td class="up">+2.14%</td><td>4.7亿</td><td>0.14%</td><td>0.29</td><td>缩量</td></tr></tbody></table></div></div>
+<div class="sec" id="s-oversold"><div class="sec-t c8">🔍 超跌候选（RSI&lt;30，可能存在反弹机会）</div><div class="sec-b"><div class="callout warn">这些股票 RSI &lt; 30，意味着跌得比较深，历史上此类情况常出现反弹。但 <b>跌深不等于一定反弹</b>，建议等到出现「<b>当天放量 + 第二天高开</b>」的信号再考虑介入。趋势仍向下（评分为负）的股票风险更高，需谨慎。</div><p style='margin-top:10px'>今日无超跌候选（RSI&lt;30 且当日下跌）</p></div></div>
+<div class="sec" id="s-risk"><div class="sec-t c6">⚠️ 风险事件（跌停）</div><div class="sec-b"><table><thead><tr><th>代码</th><th>名称</th><th>涨跌幅</th><th>成交额</th><th>说明</th></tr></thead><tbody><tr><td>01024</td><td>快手</td><td class="dn">-13.33%</td><td>35.4亿</td><td>跌停，需关注公告</td></tr></tbody></table></div></div>
+<div class="two-col">
+  <div class="sec" id="s-summary"><div class="sec-t c9">📊 市场概况</div><div class="sec-b"><table><thead><tr><th>指标</th><th>数值</th></tr></thead><tbody><tr><td>上涨/下跌/平盘</td><td>7/26/1</td></tr><tr><td>涨停/跌停</td><td>0/1</td></tr><tr><td>平均涨跌幅</td><td class="dn"><b>-1.07%</b></td></tr><tr><td>中位数涨跌幅</td><td>-1.36%</td></tr><tr><td>总成交额</td><td>147.8亿</td></tr><tr><td>板块平均量比</td><td>0.19</td></tr><tr><td>市场情绪</td><td><b>谨慎偏空</b></td></tr></tbody></table><p class="note">上涨面21%，多数个股走弱。</p><p class="note" style="margin-top:6px">平均（-1.07%）与中位数（-1.36%）接近，涨跌分布较为均匀，没有明显的极端个股拉偏。</p></div></div>
+  <div class="sec" id="s-tech"><div class="sec-t c9">🔬 技术面信号</div><div class="sec-b"><table><thead><tr><th>信号</th><th>数量</th><th>占比</th></tr></thead><tbody><tr><td>强势（均线向上+动能向上）</td><td>0只</td><td>0.0%</td></tr><tr><td>弱势（均线向下+动能向下）</td><td>0只</td><td>0.0%</td></tr><tr><td>市场平均热度(RSI)</td><td>nan</td><td>偏热（涨得较多）</td></tr><tr><td>热度极低 RSI&lt;30（跌得过深）</td><td>0只</td><td>0.0%</td></tr><tr><td>热度极高 RSI&gt;70（涨得过快）</td><td>0只</td><td>0.0%</td></tr></tbody></table></div></div>
+</div>
+<div class="sec" id="s-concl"><div class="sec-t c10">📋 综合结论</div><div class="sec-b"><div class="callout" style="margin-bottom:14px">今日市场 <b>谨慎偏空</b>，上涨面21%，多数个股走弱。强势股 0 只 vs 弱势股 0 只，多空力量相当，市场处于震荡阶段。RSI均值 nan，市场整体偏热，追高需谨慎。成交明显萎缩，市场观望情绪浓（总成交 148 亿）。板块领涨 <b>软件开发</b>，拖累 <b>互联网</b>。<br><b style="color:#0d47a1">操作建议：以观望为主，持仓控制在五成以下</b></div><table><thead><tr><th>维度</th><th>判断</th></tr></thead><tbody><tr><td>短期情绪</td><td>谨慎偏空</td></tr><tr><td>趋势结构</td><td>弱势0只 vs 强势0只，多空均衡</td></tr><tr><td>整体热度</td><td>平均RSI nan，超跌0只（占0%）</td></tr><tr><td>资金面</td><td>龙头成交 快手 35亿，成交明显萎缩，市场观望情绪浓</td></tr><tr><td>板块领涨</td><td>软件开发 +3.96%</td></tr><tr><td>操作建议</td><td><b>以观望为主，持仓控制在五成以下</b></td></tr></tbody></table></div></div>
+<div class="sec" id="s-gloss"><div class="sec-t c2">📖 指标说明（看不懂先读这里）</div><div class="sec-b"><table><thead><tr><th>术语</th><th>白话解释</th></tr></thead><tbody><tr><td>涨跌幅</td><td>今天比昨天涨了/跌了多少。+10%为涨停，-10%为跌停</td></tr><tr><td>RSI热度（0~100）</td><td>衡量股票冷热：&gt;70=涨太快可能回调；&lt;30=跌太深可能反弹</td></tr><tr><td>量比</td><td>今日成交量÷近5日均量。&gt;2=放量（大资金涌入）；&lt;0.5=缩量（冷清）</td></tr><tr><td>换手率</td><td>今日全部股份中发生买卖的比例，越高说明交投越活跃</td></tr><tr><td>均线向上排列</td><td>5日&gt;20日&gt;60日均线，短期涨得比长期快，上涨趋势健康</td></tr><tr><td>动能向上（MACD金叉）</td><td>短期涨势超过长期，技术派常用买入信号</td></tr><tr><td>动能向下（MACD死叉）</td><td>短期涨势跌破长期，技术派常用卖出信号</td></tr><tr><td>距60日均线</td><td>当前价格比过去60日均价高/低多少。正=涨破均线，负=跌破均线</td></tr><tr><td>营收增速</td><td>最新季报营收 vs 约一年前同期，正值=营收在增长</td></tr><tr><td>负债率</td><td>总负债÷总资产，超过70%需注意风险</td></tr></tbody></table><p class="note" style="margin-top:12px">⚠️ 本报告仅做信息整理，不构成投资建议。股市有风险，入市需谨慎。</p></div></div>
+<div class="footer">本报告由量化脚本自动生成，仅供参考，不构成投资建议。</div>
+</div>
+</body>
+</html>

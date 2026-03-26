@@ -1,0 +1,22 @@
+{
+  "generated_at": "2026-03-26T09:56:29",
+  "entries": [
+    {
+      "date": "2026-03-26",
+      "sentiment": "谨慎偏空",
+      "se_emoji": "😐",
+      "avg_chg": -1.07,
+      "n_up": 7,
+      "n_down": 26,
+      "n_flat": 1,
+      "n_limit_up": 0,
+      "n_limit_down": 1,
+      "total_vol": 147.8,
+      "total": 34,
+      "top_sector": "软件开发",
+      "top_sector_chg": 3.96,
+      "bot_sector": "互联网",
+      "bot_sector_chg": -2.61
+    }
+  ]
+}
