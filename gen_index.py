@@ -1,14 +1,16 @@
 """
 历史报告存档工具
 
-- 维护 reports/manifest.json（报告元数据库）
-- 生成 index.html（存档首页，按月分组卡片列表）
+- 维护 reports/{a,hk}/manifest.json（报告元数据库）
+- 生成 index_a.html / index_hk.html（市场存档首页，按月分组卡片列表）
+- 生成 index.html（双市场落地页）
 
 对外接口：
-  update_manifest_and_index(ctx, target_date, reports_dir, index_path)
+  update_manifest_and_index(ctx, target_date, reports_dir, index_path, market)
   get_prev_date(manifest_path) -> str | None
+  build_root_index(root_path)
 
-命令行运行：扫描 reports/*.html，回填 manifest，重新生成 index.html
+命令行运行：扫描报告目录，回填 manifest，重新生成存档页
 """
 import io
 import json
@@ -19,13 +21,16 @@ from datetime import datetime
 from html import escape as _e
 from pathlib import Path
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+if getattr(sys.stdout, "encoding", "").lower() != "utf-8":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+if getattr(sys.stderr, "encoding", "").lower() != "utf-8":
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 _WEEKDAY_CN = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 
-REPORTS_DIR = Path(__file__).parent / "reports"
-INDEX_PATH = Path(__file__).parent / "index.html"
+_ROOT = Path(__file__).parent
+REPORTS_DIR = _ROOT / "reports" / "a"
+INDEX_PATH = _ROOT / "index_a.html"
 
 
 # ── manifest 读写 ─────────────────────────────────────────────────────────────
@@ -102,8 +107,9 @@ def update_manifest_and_index(
     target_date: str,
     reports_dir: Path,
     index_path: Path,
+    market: str = "a",
 ) -> None:
-    """将 ctx 中的统计量写入 manifest.json，并重新生成 index.html。"""
+    """将 ctx 中的统计量写入 manifest.json，并重新生成存档页。"""
     manifest_path = reports_dir / "manifest.json"
     data = _load_manifest(manifest_path)
     entries = data.get("entries", [])
@@ -115,8 +121,11 @@ def update_manifest_and_index(
     data["entries"] = entries
 
     _save_manifest(data, manifest_path)
-    _build_index_html(data, reports_dir, index_path)
-    print(f"[✓] manifest 已更新（共 {len(entries)} 条），index.html 已重新生成")
+    _build_index_html(data, reports_dir, index_path, market=market)
+    # 同时刷新根落地页
+    root_index = index_path.parent / "index.html"
+    build_root_index(root_index)
+    print(f"[✓] manifest 已更新（共 {len(entries)} 条），{index_path.name} 已重新生成")
 
 
 # ── index.html 生成 ───────────────────────────────────────────────────────────
@@ -194,7 +203,7 @@ def _chg_str(v) -> str:
     return f"+{v:.2f}%" if v >= 0 else f"{v:.2f}%"
 
 
-def _card_html(entry: dict, reports_dir: Path) -> str:
+def _card_html(entry: dict, reports_dir: Path, market: str = "a") -> str:
     date = entry["date"]
     try:
         dt = datetime.strptime(date, "%Y-%m-%d")
@@ -233,13 +242,15 @@ def _card_html(entry: dict, reports_dir: Path) -> str:
             f'</div>'
         )
 
-    report_filename = f"daily_{date}.html"
+    sub_dir = market if market in ("hk", "us") else "a"
+    file_prefix = {"hk": "hk_", "us": "us_"}.get(market, "daily_")
+    report_filename = f"{file_prefix}{date}.html"
     report_exists = (reports_dir / report_filename).exists()
     btn_html = ""
     if report_exists:
         btn_html = (
             f'<div class="card-btn">'
-            f'<a href="reports/{_e(report_filename)}">查看报告 →</a>'
+            f'<a href="reports/{sub_dir}/{_e(report_filename)}">查看报告 →</a>'
             f'</div>'
         )
 
@@ -266,7 +277,7 @@ def _card_html(entry: dict, reports_dir: Path) -> str:
     )
 
 
-def _build_index_html(data: dict, reports_dir: Path, index_path: Path) -> None:
+def _build_index_html(data: dict, reports_dir: Path, index_path: Path, market: str = "a") -> None:
     entries = data.get("entries", [])
     total_count = len(entries)
 
@@ -284,7 +295,7 @@ def _build_index_html(data: dict, reports_dir: Path, index_path: Path) -> None:
 
     month_blocks = []
     for month_key in sorted(by_month.keys(), reverse=True):
-        cards = "".join(_card_html(e, reports_dir) for e in by_month[month_key])
+        cards = "".join(_card_html(e, reports_dir, market=market) for e in by_month[month_key])
         month_blocks.append(
             f'<div class="month-group">'
             f'<div class="month-label">{_e(month_key)}</div>'
@@ -298,19 +309,21 @@ def _build_index_html(data: dict, reports_dir: Path, index_path: Path) -> None:
         else "<p style='color:#9e9e9e;padding:20px 0'>暂无报告记录</p>"
     )
     gen_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+    market_label = {"a": "A股", "hk": "港股", "us": "美股"}.get(market, "美股")
+    market_sub = {"a": "申万行业覆盖", "hk": "港股核心板块", "us": "NYSE · NASDAQ · ETF指数"}.get(market, "NYSE · NASDAQ · ETF指数")
 
     html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>A股日报 · 历史存档</title>
+<title>{market_label}日报 · 历史存档</title>
 <style>{_INDEX_CSS}</style>
 </head>
 <body>
 <div class="hdr">
-  <h1>📊 A股日报 · 历史存档</h1>
-  <div class="sub">自动生成 · 申万行业覆盖 · 每日更新</div>
+  <h1>📊 {market_label}日报 · 历史存档</h1>
+  <div class="sub">自动生成 · {market_sub} · 每日更新</div>
   <div class="hdr-meta">
     <div class="hdr-badge">共 <b>{total_count}</b> 份报告</div>
     <div class="hdr-badge">时间跨度 <b>{_e(span_str)}</b></div>
@@ -326,19 +339,88 @@ def _build_index_html(data: dict, reports_dir: Path, index_path: Path) -> None:
     index_path.write_text(html, encoding="utf-8")
 
 
+# ── 根落地页 ───────────────────────────────────────────────────────────────────
+
+_ROOT_CSS = """
+:root { --navy:#1a237e; --bg:#f0f2f5; }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+       background:var(--bg); color:#212121; min-height:100vh;
+       display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.root-wrap { text-align:center; padding:32px 16px; }
+.root-title { font-size:28px; font-weight:700; color:var(--navy); margin-bottom:8px; letter-spacing:2px; }
+.root-sub { font-size:14px; color:#757575; margin-bottom:40px; }
+.market-btns { display:flex; gap:24px; flex-wrap:wrap; justify-content:center; }
+.market-btn { display:flex; flex-direction:column; align-items:center; justify-content:center;
+              width:200px; height:140px; border-radius:12px; text-decoration:none;
+              transition:transform .15s, box-shadow .15s; box-shadow:0 2px 8px rgba(0,0,0,.12); }
+.market-btn:hover { transform:translateY(-4px); box-shadow:0 8px 24px rgba(0,0,0,.18); }
+.btn-a { background:linear-gradient(135deg,#0d47a1,#1a237e); }
+.btn-hk { background:linear-gradient(135deg,#b71c1c,#7f0000); }
+.btn-us { background:linear-gradient(135deg,#1b5e20,#2e7d32); }
+.market-btn .icon { font-size:36px; margin-bottom:10px; }
+.market-btn .label { font-size:18px; font-weight:700; color:#fff; letter-spacing:1px; }
+.market-btn .desc { font-size:12px; color:rgba(255,255,255,.75); margin-top:4px; }
+.footer { margin-top:40px; font-size:12px; color:#9e9e9e; }
+"""
+
+
+def build_root_index(root_path: Path) -> None:
+    """生成根目录 index.html 双市场落地页。"""
+    gen_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+    html = f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>股票日报 · 选择市场</title>
+<style>{_ROOT_CSS}</style>
+</head>
+<body>
+<div class="root-wrap">
+  <div class="root-title">📊 股票日报</div>
+  <div class="root-sub">自动生成 · 每日更新 · 更新于 {gen_time}</div>
+  <div class="market-btns">
+    <a class="market-btn btn-a" href="index_a.html">
+      <span class="icon">🇨🇳</span>
+      <span class="label">A 股日报</span>
+      <span class="desc">申万行业 · 沪深两市</span>
+    </a>
+    <a class="market-btn btn-hk" href="index_hk.html">
+      <span class="icon">🇭🇰</span>
+      <span class="label">港股日报</span>
+      <span class="desc">核心板块 · 港交所</span>
+    </a>
+    <a class="market-btn btn-us" href="index_us.html">
+      <span class="icon">🇺🇸</span>
+      <span class="label">美 股 日 报</span>
+      <span class="desc">NYSE · NASDAQ · ETF指数</span>
+    </a>
+  </div>
+  <div class="footer">本报告由量化脚本自动生成，仅供参考，不构成投资建议。</div>
+</div>
+</body>
+</html>"""
+    root_path.write_text(html, encoding="utf-8")
+    print(f"[✓] 根落地页已生成：{root_path}")
+
+
 # ── 命令行入口：回填历史 ──────────────────────────────────────────────────────
 
-def _backfill(reports_dir: Path, index_path: Path) -> None:
-    """扫描 reports/*.html，补全缺失的 manifest 条目。"""
+def _backfill(reports_dir: Path, index_path: Path, market: str = "a") -> None:
+    """扫描报告目录 HTML，补全缺失的 manifest 条目。"""
     manifest_path = reports_dir / "manifest.json"
     data = _load_manifest(manifest_path)
     existing_dates = {e["date"] for e in data.get("entries", [])}
 
-    html_files = sorted(reports_dir.glob("daily_????-??-??.html"))
+    file_prefix = {"hk": "hk_", "us": "us_"}.get(market, "daily_")
+    pattern = f"{file_prefix}????-??-??.html"
+    date_re = rf"{re.escape(file_prefix)}(\d{{4}}-\d{{2}}-\d{{2}})\.html"
+    html_files = sorted(reports_dir.glob(pattern))
     print(f"发现 {len(html_files)} 个报告文件")
 
     for html_file in html_files:
-        m = re.search(r"daily_(\d{4}-\d{2}-\d{2})\.html", html_file.name)
+        m = re.search(date_re, html_file.name)
         if not m:
             continue
         date = m.group(1)
@@ -388,10 +470,26 @@ def _backfill(reports_dir: Path, index_path: Path) -> None:
 
     data["entries"].sort(key=lambda e: e["date"], reverse=True)
     _save_manifest(data, manifest_path)
-    _build_index_html(data, reports_dir, index_path)
+    _build_index_html(data, reports_dir, index_path, market=market)
     print(f"\n[✓] manifest 已保存：{manifest_path}")
-    print(f"[✓] index.html 已生成：{index_path}")
+    print(f"[✓] {index_path.name} 已生成：{index_path}")
 
 
 if __name__ == "__main__":
-    _backfill(REPORTS_DIR, INDEX_PATH)
+    import argparse
+
+    parser = argparse.ArgumentParser(description="回填 manifest，重新生成存档页")
+    parser.add_argument("--market", choices=["a", "hk", "us", "all"], default="all",
+                        help="市场：a=A股，hk=港股，us=美股，all=三个市场（默认）")
+    args = parser.parse_args()
+
+    _market_label = {"a": "A股", "hk": "港股", "us": "美股"}
+    markets = ["a", "hk", "us"] if args.market == "all" else [args.market]
+    for mkt in markets:
+        r_dir = _ROOT / "reports" / mkt
+        i_path = _ROOT / f"index_{mkt}.html"
+        r_dir.mkdir(parents=True, exist_ok=True)
+        print(f"\n=== 处理 {_market_label.get(mkt, mkt)} ===")
+        _backfill(r_dir, i_path, market=mkt)
+
+    build_root_index(_ROOT / "index.html")

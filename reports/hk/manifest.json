@@ -1,6 +1,23 @@
 {
-  "generated_at": "2026-03-26T09:56:29",
+  "generated_at": "2026-03-30T14:45:21",
   "entries": [
+    {
+      "date": "2026-03-30",
+      "sentiment": "谨慎偏空",
+      "se_emoji": "😐",
+      "avg_chg": -1.07,
+      "n_up": 26,
+      "n_down": 75,
+      "n_flat": 5,
+      "n_limit_up": 0,
+      "n_limit_down": 0,
+      "total_vol": 976.0,
+      "total": 106,
+      "top_sector": "黄金",
+      "top_sector_chg": 5.02,
+      "bot_sector": "锂电池",
+      "bot_sector_chg": -5.21
+    },
     {
       "date": "2026-03-26",
       "sentiment": "谨慎偏空",

@@ -5,12 +5,13 @@ from pathlib import Path
 import akshare as ak
 import pandas as pd
 
-from crawler.config import INDUSTRY_BOARDS
+from crawler.config import ETF_BOARDS, INDUSTRY_BOARDS
 from crawler.utils import retry_with_backoff
 
 logger = logging.getLogger(__name__)
 
 INDUSTRIES_CSV = Path(__file__).parent.parent / "data" / "stock_industries.csv"
+NAMES_CSV = Path(__file__).parent.parent / "data" / "stock_names.csv"
 
 
 def build_stock_pool() -> list[str]:
@@ -48,6 +49,30 @@ def build_stock_pool() -> list[str]:
                     industry_map[code] = label
             all_symbols.update(symbols)
             logger.info("[%s] %s: %d stocks.", label, sw_code, len(symbols))
+
+    # 追加 ETF_BOARDS（手动维护，不经过申万行业 API）
+    etf_names: dict[str, str] = {}  # code -> name
+    for label, stocks in ETF_BOARDS.items():
+        for code, name in stocks:
+            if code not in industry_map:
+                industry_map[code] = label
+            all_symbols.add(code)
+            etf_names[code] = name
+    logger.info("ETF/指数手动追加: %d 只", len(etf_names))
+
+    # 将 ETF 名称合并写入 stock_names.csv（仅补充缺失条目，不覆盖已有数据）
+    if etf_names and NAMES_CSV.exists():
+        names_df = pd.read_csv(NAMES_CSV, dtype=str)
+        existing_codes = set(names_df["code"])
+        new_rows = [
+            {"code": code, "name": name}
+            for code, name in etf_names.items()
+            if code not in existing_codes
+        ]
+        if new_rows:
+            names_df = pd.concat([names_df, pd.DataFrame(new_rows)], ignore_index=True)
+            names_df.to_csv(NAMES_CSV, index=False, encoding="utf-8")
+            logger.info("已向 stock_names.csv 追加 %d 条 ETF 名称", len(new_rows))
 
     result = sorted(all_symbols)
     logger.info("Stock pool built: %d unique stocks.", len(result))

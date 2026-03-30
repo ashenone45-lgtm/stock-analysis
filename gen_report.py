@@ -2,10 +2,11 @@
 日报生成脚本
 
 用法：
-  python gen_report.py              # 生成最新交易日报告（Markdown + HTML）
+  python gen_report.py                      # 生成最新 A股 日报（Markdown + HTML）
+  python gen_report.py --market hk          # 生成港股日报
   python gen_report.py --date 2026-03-14
-  python gen_report.py --out reports/  # 指定输出目录
-  python gen_report.py --no-html       # 只生成 Markdown，跳过 HTML
+  python gen_report.py --out reports/a/     # 指定输出目录
+  python gen_report.py --no-html            # 只生成 Markdown，跳过 HTML
 """
 import argparse
 import io
@@ -25,10 +26,14 @@ from tqdm import tqdm
 from crawler.config import INDUSTRY_BOARDS
 from crawler.report_utils import load_financial_snapshot, prepare_report_context, sector_table as _sector_table
 
-DATA_DIR = Path(__file__).parent / "data" / "market"
-NAMES_CSV = Path(__file__).parent / "data" / "stock_names.csv"
-INDUSTRIES_CSV = Path(__file__).parent / "data" / "stock_industries.csv"
-REPORTS_DIR = Path(__file__).parent / "reports"
+_ROOT = Path(__file__).parent
+
+# 默认 A 股路径；__main__ 中根据 --market 动态覆盖
+DATA_DIR        = _ROOT / "data" / "market"
+NAMES_CSV       = _ROOT / "data" / "stock_names.csv"
+INDUSTRIES_CSV  = _ROOT / "data" / "stock_industries.csv"
+REPORTS_DIR     = _ROOT / "reports" / "a"
+_MARKET         = "a"   # 当前市场标识（"a" | "hk" | "us"）
 
 
 # ── 数据加载 ────────────────────────────────────────────────
@@ -163,7 +168,14 @@ def _glossary_section() -> str:
 
 
 def build_report(df: pd.DataFrame, target_date: str) -> str:
-    industries_desc = " / ".join(INDUSTRY_BOARDS.keys())
+    if _MARKET == "hk":
+        from crawler.hk_config import HK_STOCK_POOL
+        industries_desc = " / ".join(HK_STOCK_POOL.keys())
+    elif _MARKET == "us":
+        from crawler.us_config import US_STOCK_POOL
+        industries_desc = " / ".join(US_STOCK_POOL.keys())
+    else:
+        industries_desc = " / ".join(INDUSTRY_BOARDS.keys())
 
     total = len(df)
     n_up = (df["涨跌幅"] > 0).sum()
@@ -446,18 +458,20 @@ def _available_dates() -> list[str]:
     return sorted(seen)
 
 
-def _generate_one(target_date: str, out_dir: Path, no_html: bool, open_after: bool) -> bool:
+def _generate_one(target_date: str, out_dir: Path, no_html: bool, open_after: bool, market: str = "a") -> bool:
     """生成单日报告。返回 True 表示成功。"""
     print(f"\n{'='*50}", flush=True)
-    print(f"生成 {target_date} 报告...", flush=True)
+    market_cn = {"hk": "港股", "us": "美股"}.get(market, "A股")
+    print(f"生成 {target_date} ({market_cn}) 报告...", flush=True)
     names = load_names()
     df = load_market(target_date, names)
     if df.empty:
         print(f"[!] 没有 {target_date} 的数据，跳过。")
         return False
 
+    file_prefix = {"hk": "hk_", "us": "us_"}.get(market, "daily_")
     report = build_report(df, target_date)
-    md_file = out_dir / f"daily_{target_date}.md"
+    md_file = out_dir / f"{file_prefix}{target_date}.md"
     md_file.write_text(report, encoding="utf-8")
     print(f"已保存: {md_file}")
 
@@ -466,15 +480,17 @@ def _generate_one(target_date: str, out_dir: Path, no_html: bool, open_after: bo
         from gen_index import update_manifest_and_index, get_prev_date
         manifest_path = out_dir / "manifest.json"
         prev_date = get_prev_date(manifest_path, before_date=target_date)
-        html_file = out_dir / f"daily_{target_date}.html"
-        build_html(df, target_date, html_file, prev_date=prev_date)
+        html_file = out_dir / f"{file_prefix}{target_date}.html"
+        index_name = {"hk": "index_hk.html", "us": "index_us.html"}.get(market, "index_a.html")
+        build_html(df, target_date, html_file, prev_date=prev_date, market=market)
         print(f"已保存: {html_file}")
         ctx = prepare_report_context(df)
         update_manifest_and_index(
             ctx=ctx,
             target_date=target_date,
             reports_dir=out_dir,
-            index_path=Path(__file__).parent / "index.html",
+            index_path=_ROOT / index_name,
+            market=market,
         )
         if open_after:
             import os
@@ -485,7 +501,9 @@ def _generate_one(target_date: str, out_dir: Path, no_html: bool, open_after: bo
 # ── 主入口 ──────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="生成 A股日报（Markdown + HTML）")
+    parser = argparse.ArgumentParser(description="生成日报（Markdown + HTML）")
+    parser.add_argument("--market", choices=["a", "hk", "us"], default="a",
+                        help="市场：a=A股（默认），hk=港股，us=美股")
     parser.add_argument("--date", type=str, default=None,
                         help="指定单个日期，如 2026-03-24")
     parser.add_argument("--dates", type=str, nargs="+", metavar="DATE",
@@ -497,6 +515,24 @@ if __name__ == "__main__":
     parser.add_argument("--require-today", action="store_true",
                         help="若数据日期不是今天则报错退出（用于定时任务校验）")
     args = parser.parse_args()
+
+    # ── 根据 market 动态设置路径 ──
+    _MARKET = args.market
+    if args.market == "hk":
+        DATA_DIR       = _ROOT / "data" / "hk_market"
+        NAMES_CSV      = _ROOT / "data" / "hk_names.csv"
+        INDUSTRIES_CSV = _ROOT / "data" / "hk_industries.csv"
+        REPORTS_DIR    = _ROOT / "reports" / "hk"
+    elif args.market == "us":
+        DATA_DIR       = _ROOT / "data" / "us_market"
+        NAMES_CSV      = _ROOT / "data" / "us_names.csv"
+        INDUSTRIES_CSV = _ROOT / "data" / "us_industries.csv"
+        REPORTS_DIR    = _ROOT / "reports" / "us"
+    else:
+        DATA_DIR       = _ROOT / "data" / "market"
+        NAMES_CSV      = _ROOT / "data" / "stock_names.csv"
+        INDUSTRIES_CSV = _ROOT / "data" / "stock_industries.csv"
+        REPORTS_DIR    = _ROOT / "reports" / "a"
 
     out_dir = Path(args.out) if args.out else REPORTS_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -545,7 +581,7 @@ if __name__ == "__main__":
     ok, fail = 0, 0
     for i, d in enumerate(target_dates):
         open_browser = sys.stdout.isatty() and len(target_dates) == 1
-        if _generate_one(d, out_dir, args.no_html, open_after=open_browser):
+        if _generate_one(d, out_dir, args.no_html, open_after=open_browser, market=args.market):
             ok += 1
         else:
             fail += 1

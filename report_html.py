@@ -222,8 +222,9 @@ def _bar_row(name: str, val: float, max_abs: float) -> str:
 def _build_header(target_date: str, total: int, sector_df: pd.DataFrame,
                   n_up: int, n_down: int, n_flat: int, n_lu: int, n_ld: int,
                   avg_chg: float, avg_cls: str, total_vol: float,
-                  sentiment: str, se_emoji: str) -> str:
+                  sentiment: str, se_emoji: str, market: str = "a") -> str:
     now_str = pd.Timestamp.now().strftime("%H:%M")
+    market_label = {"a": "A股", "hk": "港股", "us": "美股"}.get(market, "美股")
     if not sector_df.empty:
         tags = "".join(
             f'<span class="stag {"sup" if r["平均涨跌"] >= 0 else "sdn"}">'
@@ -234,7 +235,7 @@ def _build_header(target_date: str, total: int, sector_df: pd.DataFrame,
     else:
         sector_tags = ""
     return f"""<div class="hdr">
-  <h1>📊 A股市场日报 &middot; {_e(target_date)}</h1>
+  <h1>📊 {market_label}市场日报 &middot; {_e(target_date)}</h1>
   <div class="sub">覆盖 {total} 只股票 &middot; {len(sector_df) if not sector_df.empty else 0} 个板块 &middot; 生成于 {now_str}</div>
   {sector_tags}
   <hr class="hdr-divider">
@@ -482,10 +483,11 @@ _GLOSS_HTML = _table(["术语", "白话解释"], [
 
 # ── 主函数 ────────────────────────────────────────────────────────────────────
 
-def build_html(df: pd.DataFrame, target_date: str, out_path, prev_date: "str | None" = None) -> None:
+def build_html(df: pd.DataFrame, target_date: str, out_path, prev_date: "str | None" = None, market: str = "a") -> None:
     """生成独立 HTML 报告并写入 out_path。
 
     prev_date: 上一份报告的日期字符串（YYYY-MM-DD），用于 hist-bar 导航链接。
+    market: "a" 表示 A 股，"hk" 表示港股。
     """
     ctx         = prepare_report_context(df)
     total       = ctx["total"]
@@ -505,7 +507,7 @@ def build_html(df: pd.DataFrame, target_date: str, out_path, prev_date: "str | N
     avg_cls     = "up" if avg_chg >= 0 else "dn"
 
     # ── 构建各章节 ──
-    header                  = _build_header(target_date, total, sector_df, n_up, n_down, n_flat, n_lu, n_ld, avg_chg, avg_cls, total_vol, sentiment, se_emoji)
+    header                  = _build_header(target_date, total, sector_df, n_up, n_down, n_flat, n_lu, n_ld, avg_chg, avg_cls, total_vol, sentiment, se_emoji, market=market)
     alerts, today_html      = _build_overview_html(sector_df, sentiment, se_emoji, avg_chg, avg_cls, total_vol, n_up, n_down, n_flat, n_lu, n_ld)
     sector_html             = _build_sector_html(sector_df)
     sector_detail_html      = _build_sector_detail_html(df, sector_df)
@@ -532,11 +534,14 @@ def build_html(df: pd.DataFrame, target_date: str, out_path, prev_date: "str | N
         nav_items.insert(8, ("#s-risk", "⚠️ 风险"))
     nav_html = '<nav class="nav">' + "".join(f'<a href="{h}">{l}</a>' for h, l in nav_items) + "</nav>"
 
+    _market_label_map = {"a": "A股", "hk": "港股", "us": "美股"}
+    archive_link = f"../../index_{market}.html"
+    file_prefix = {"hk": "hk_", "us": "us_"}.get(market, "daily_")
     prev_link = ""
     if prev_date:
-        prev_link = f'<a href="daily_{prev_date}.html">‹ {prev_date}</a>'
+        prev_link = f'<a href="{file_prefix}{prev_date}.html">‹ {prev_date}</a>'
     hist_bar = (f'<div class="hist-bar">'
-                f'<a href="../index.html">← 存档</a>'
+                f'<a href="{archive_link}">← 存档</a>'
                 f'{prev_link}'
                 f'<div class="spacer"></div>'
                 f'<span class="hist-date">{_e(target_date)}</span>'
@@ -570,7 +575,7 @@ def build_html(df: pd.DataFrame, target_date: str, out_path, prev_date: "str | N
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>A股日报 {_e(target_date)}</title>
+<title>{_market_label_map.get(market, "美股")}日报 {_e(target_date)}</title>
 <style>{_CSS}</style>
 </head>
 <body>

@@ -14,8 +14,11 @@ logger = logging.getLogger(__name__)
 
 
 def _exchange_prefix(symbol: str) -> str:
-    """为6位代码加交易所前缀：6开头→sh，其余→sz"""
-    return f"sh{symbol}" if symbol.startswith("6") else f"sz{symbol}"
+    """为6位代码加交易所前缀。
+    上交所（sh）：5开头（ETF/基金）、6开头（主板）、9开头（B股）、688/689（科创板）
+    深交所（sz）：0开头（主板）、1开头（ETF如159xxx/转债）、2开头、3开头（创业板）
+    """
+    return f"sz{symbol}" if symbol[:1] in ("0", "1", "2", "3") else f"sh{symbol}"
 
 
 def _normalize(df: pd.DataFrame) -> pd.DataFrame:

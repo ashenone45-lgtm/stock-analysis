@@ -28,9 +28,41 @@ import pandas as pd
 from crawler.report_utils import sector_table as _sector_table
 from gen_report import load_market, load_names
 
-DATA_DIR = Path(__file__).parent / "data" / "market"
-REPORTS_DIR = Path(__file__).parent / "reports"
-ENV_FILE = Path(__file__).parent / ".env"
+_ROOT = Path(__file__).parent
+ENV_FILE = _ROOT / ".env"
+
+# 各市场路径配置
+_MARKET_CONFIG = {
+    "a":  {
+        "data_dir":      _ROOT / "data" / "market",
+        "reports_dir":   _ROOT / "reports" / "a",
+        "file_prefix":   "daily_",
+        "label":         "A股",
+        "names_csv":     _ROOT / "data" / "stock_names.csv",
+        "industries_csv":_ROOT / "data" / "stock_industries.csv",
+    },
+    "hk": {
+        "data_dir":      _ROOT / "data" / "hk_market",
+        "reports_dir":   _ROOT / "reports" / "hk",
+        "file_prefix":   "hk_",
+        "label":         "港股",
+        "names_csv":     _ROOT / "data" / "hk_names.csv",
+        "industries_csv":_ROOT / "data" / "hk_industries.csv",
+    },
+    "us": {
+        "data_dir":      _ROOT / "data" / "us_market",
+        "reports_dir":   _ROOT / "reports" / "us",
+        "file_prefix":   "us_",
+        "label":         "美股",
+        "names_csv":     _ROOT / "data" / "us_names.csv",
+        "industries_csv":_ROOT / "data" / "us_industries.csv",
+    },
+}
+
+# 运行时由 __main__ 根据 --market 覆盖
+_current_market = "a"
+DATA_DIR = _MARKET_CONFIG["a"]["data_dir"]
+REPORTS_DIR = _MARKET_CONFIG["a"]["reports_dir"]
 
 
 def load_env() -> dict:
@@ -229,7 +261,9 @@ def build_report_data(df: pd.DataFrame, target_date: str) -> dict:
             for i in range(len(sub_df))
         ]
 
-    html_path = REPORTS_DIR / f"daily_{target_date}.html"
+    file_prefix = _MARKET_CONFIG.get(_current_market, _MARKET_CONFIG["a"])["file_prefix"]
+    market_label = _MARKET_CONFIG.get(_current_market, _MARKET_CONFIG["a"])["label"]
+    html_path = REPORTS_DIR / f"{file_prefix}{target_date}.html"
     return {
         "date": target_date,
         "total": total,
@@ -259,6 +293,7 @@ def build_report_data(df: pd.DataFrame, target_date: str) -> dict:
         "sector_summary": sector_summary,
         "html_path": str(html_path),
         "html_exists": html_path.exists(),
+        "market_label": market_label,
         "html_url": None,  # 由主入口上传后填入
     }
 
@@ -332,7 +367,7 @@ def build_feishu_payload(d: dict) -> dict:
         "content": {
             "post": {
                 "zh_cn": {
-                    "title": f"📊 A股日报 {d['date']}",
+                    "title": f"📊 {d['market_label']}日报 {d['date']}",
                     "content": content,
                 }
             }
@@ -376,7 +411,7 @@ def build_dingtalk_payload(d: dict) -> dict:
     sec_line = _sector_line(d.get("sector_summary"))
     sec_md = f"\n🏭 **{sec_line}**\n" if sec_line else ""
 
-    text = f"""## 📊 A股日报 {d["date"]}
+    text = f"""## 📊 {d["market_label"]}日报 {d["date"]}
 {alert_lines}
 **市场概况:** {d["total"]}只 | 上涨 {d["n_up"]} | 下跌 {d["n_down"]} | 均涨 {avg_sign}{d["avg_chg"]:.2f}% | 情绪: **{d["sentiment"]}**
 
@@ -397,7 +432,7 @@ def build_dingtalk_payload(d: dict) -> dict:
     return {
         "msgtype": "markdown",
         "markdown": {
-            "title": f"A股日报 {d['date']}",
+            "title": f"{d['market_label']}日报 {d['date']}",
             "text": text,
         },
         "at": {"isAtAll": False},
@@ -446,9 +481,24 @@ def push_dingtalk(webhook_url: str, payload: dict, dry_run: bool) -> bool:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--market", choices=["a", "hk", "us"], default="a",
+                        help="市场：a=A股（默认），hk=港股，us=美股")
     parser.add_argument("--date", type=str, default=None)
     parser.add_argument("--dry-run", action="store_true", help="只打印消息内容，不实际发送")
     args = parser.parse_args()
+
+    # 根据 market 配置路径
+    _current_market = args.market
+    cfg = _MARKET_CONFIG[_current_market]
+    DATA_DIR = cfg["data_dir"]
+    REPORTS_DIR = cfg["reports_dir"]
+
+    # 同步 gen_report 模块的全局变量，使 load_names / load_market 使用正确路径
+    import gen_report as _gr
+    _gr.DATA_DIR        = cfg["data_dir"]
+    _gr.NAMES_CSV       = cfg["names_csv"]
+    _gr.INDUSTRIES_CSV  = cfg["industries_csv"]
+    _gr._MARKET         = _current_market
 
     if args.date:
         target_date = args.date
@@ -463,11 +513,11 @@ if __name__ == "__main__":
             except Exception:
                 pass
         if not dates:
-            print("无法读取行情数据，请先运行 daily 工作流。")
+            print(f"无法读取 {cfg['label']} 行情数据，请先运行 daily 工作流。")
             sys.exit(1)
         target_date = max(dates)
 
-    print(f"加载 {target_date} 数据...", flush=True)
+    print(f"加载 {cfg['label']} {target_date} 数据...", flush=True)
     names = load_names()
     df = load_market(target_date, names)
 

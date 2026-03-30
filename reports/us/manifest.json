@@ -1,0 +1,39 @@
+{
+  "generated_at": "2026-03-30T14:45:21",
+  "entries": [
+    {
+      "date": "2026-03-27",
+      "sentiment": "谨慎偏空",
+      "se_emoji": "😐",
+      "avg_chg": -1.3,
+      "n_up": 18,
+      "n_down": 58,
+      "n_flat": 0,
+      "n_limit_up": 0,
+      "n_limit_down": 0,
+      "total_vol": 3626.6,
+      "total": 76,
+      "top_sector": "商品ETF",
+      "top_sector_chg": 3.48,
+      "bot_sector": "金融",
+      "bot_sector_chg": -2.96
+    },
+    {
+      "date": "2026-03-25",
+      "sentiment": "乐观偏多",
+      "se_emoji": "🚀",
+      "avg_chg": 1.16,
+      "n_up": 59,
+      "n_down": 17,
+      "n_flat": 0,
+      "n_limit_up": 0,
+      "n_limit_down": 0,
+      "total_vol": 3164.6,
+      "total": 76,
+      "top_sector": "中概股",
+      "top_sector_chg": 2.93,
+      "bot_sector": "能源",
+      "bot_sector_chg": -0.12
+    }
+  ]
+}

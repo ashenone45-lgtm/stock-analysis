@@ -17,21 +17,21 @@ if errorlevel 1 (
 )
 
 echo Step 2/3: Generating report...
-python gen_report.py
+python gen_report.py --market a
 if errorlevel 1 (
     echo ERROR: report generation failed.
     exit /b 1
 )
 
 echo Step 3/4: Pushing report...
-python push_report.py
+python push_report.py --market a
 if errorlevel 1 (
     echo ERROR: push failed.
     exit /b 1
 )
 
 echo Step 4/4: Publishing to GitHub Pages...
-git add reports\daily_%TODAY%.html reports\daily_%TODAY%.md reports\manifest.json index.html
+git add reports\a\daily_%TODAY%.html reports\a\daily_%TODAY%.md reports\a\manifest.json index_a.html index.html
 git diff --cached --quiet
 if errorlevel 1 (
     git commit -m "feat: daily report %TODAY%"
